@@ -1,0 +1,138 @@
+# Changelog
+
+All notable changes to InsightDock Charting Library for C++ are documented here.
+
+Format based on [Keep a Changelog](https://keepachangelog.com/). Versioning follows [Semantic Versioning](https://semver.org/).
+
+## [Unreleased]
+
+### Added
+
+- **Data labels on marks — all 6 chart types** — `DataLabelOptions` (`include/insightdock/chart_style.h`: `enabled`, `color`, `font_size`, `position`, `decimals`, `format`) added as a `data_labels` field on `PieOptions`, `BarOptions`, `LineChartOptions`, `AreaChartOptions`, `ComboLineOptions`, `ScatterOptions` — default `enabled = false`, so existing renders are byte-identical until opted in. Bar/Line/Area/Combo reuse the same `TickFormat`-based formatting as y-axis ticks (hoisted from `cartesian_chart.cc`'s file-local `format_y_tick` into `detail::format_tick_value()` / `detail::format_label_value()` in the new `include/insightdock/detail/tick_format.h`), so a label matches its axis's number formatting. `PieChart` gets a new in-slice value/percentage label at `radius*0.65` along each slice's midpoint angle, distinct from the existing external leader-line label. `ScatterChart` labels the formatted Y value only (no per-point custom label in v1).
+- **Bar rounded corners + border** — `BarChart`'s previously-scattered private members (`mode_`/`group_gap_`/`bar_gap_`) promoted to a `BarOptions` struct (`include/insightdock/bar_chart.h`) with new `corner_radius`, `border_color` (default transparent = no border), and `border_width` fields; old `set_mode()`/`set_group_gap()`/`set_bar_gap()` setters kept as forwarders for source compatibility. `ImageBuffer::fill_rounded_rect()` (new primitive, mirrors the existing `fill_circle`/`fill_sector` 4x4 supersample-AA technique via a rounded-box signed-distance-field) and a shared `detail::fill_bar()` helper (`include/insightdock/detail/bar_shape.h`) apply the same rounding/border logic to both `BarChart` and `ComboChart`'s bar series (which gained a parallel `BarOptions bar_opts_`). A rounded bar with a border draws a plain rectangular outline for v1 — a minor accepted overlap at the 4 corners.
+- **Pie doughnut cutout** — `PieOptions::inner_radius_ratio` (0–1, default `0`) punches a hole in the pie's center down to the chart's background color after slices are drawn (`PieChart::render()`). Assumes a solid background, which is already the only backdrop this library supports. Raster (PNG/JPEG/PDF-raster-embed) only — the native vector PDF/SVG pie paths (`podofo_vector.cc`, `svg_pie.cc`) don't draw the cutout yet; tracked as a follow-up.
+- **Line/area spline smoothing, dash patterns, point marker shapes** — `LineChartOptions`/`AreaChartOptions`/`ComboLineOptions` gain `spline` (bool), `dash` (`DashPattern` = `std::vector<float>` of alternating on/off pixel lengths; empty = solid), and `point_shape` (`PointMarkerShape`: `Circle`/`Square`/`Triangle`/`Cross`); `ScatterOptions` gains `point_shape`. These are chart-wide settings, not per-series. New `ImageBuffer::draw_dashed_line()`/`draw_dashed_polyline()` (dash phase carries continuously across polyline vertices) and `detail::catmull_rom_expand()` (Catmull-Rom curve expansion in `include/insightdock/detail/spline.h`, used only for the stroke/fill geometry — markers and data labels still anchor to the original per-category points) and `detail::draw_marker()` (`include/insightdock/detail/marker.h`) back all four chart types. `AreaChart` also gains point markers (`show_points`, off by default) — it previously had none at all.
+- **Reference lines & shaded bands** — `CartesianOptions::reference_lines` (`std::vector<ReferenceLine>`) and `reference_bands` (`std::vector<ReferenceBand>`) draw threshold lines/bands (e.g. an SLA line, a target range) behind a chart's own series, via a new shared `detail::draw_reference_lines()` (`include/insightdock/detail/reference_lines.h`) called from `BarChart`/`LineChart`/`AreaChart`'s new `draw_overlay()` overrides and from the top of `ComboChart::draw_overlay()` (ahead of its existing line-series drawing, so reference lines sit behind data but the combo's own lines still draw on top). `ReferenceLine`/`ReferenceBand` support `Horizontal` (y-value, optionally against the secondary axis) and `Vertical` (fractional category-index) orientation. Required promoting `CartesianChart::PlotContext` from `protected` to `public` so the shared overlay helper — outside the class hierarchy — can take it as a parameter. Not available on `PieChart`/`ScatterChart`, which have no `draw_overlay()` hook. Pulls forward the Phase 1 "step lines and spline" and Phase 2 "basic annotations and trend lines" roadmap items — see `ROADMAP.md`.
+- **Doc site restructured from 5 flat nav entries into Concepts/Guides/Chart types** (`mkdocs.yml`, `docs-site/`) — closes the gap where the richest usage content in the repo (`docs/API.md`: error handling, theming, tick formatting, extending via `draw_overlay`) existed only in the repo and was never reachable from the published MkDocs site. New pages: `docs-site/concepts.md` (class hierarchy, render pipeline, `PlotContext`/`Scale`, steps for adding a new chart type — narrative content that previously only existed in `CLAUDE.md`, which isn't a public doc); `docs-site/guides/usage.md` (transcludes `docs/API.md`, same single-source-of-truth pattern `comparison.md` already used for `docs/COMPARISON.md`); `docs-site/guides/pdf-reports.md` (new `PdfReportBuilder` walkthrough — previously only a one-line type-table entry plus the example program); `docs-site/guides/troubleshooting.md` (real incidents: the stale-install ABI hazard, clangd false positives, MrDocs aarch64 emulation, gallery baseline updates — previously scattered across `CHANGELOG.md`/`CLAUDE.md`/`DOCUMENTATION.md` with no single discoverable FAQ); `docs-site/chart-types/{pie,bar,line,area,combo,scatter}.md` (full options table + rendered example per chart type, replacing the previous "raw MrDocs struct page or nothing" gap); `docs-site/changelog.md` (transcludes `CHANGELOG.md`). `docs/API.md` trimmed (doc-tooling setup steps now just point at `DOCUMENTATION.md` instead of duplicating them) and cross-linked to the new pages.
+
+- **`CartesianOptions::min_y_labels` / `max_y_labels`** — two new integer fields (default `0` = unconstrained / default ~6) that control y-axis tick density on all `CartesianChart` subclasses (`BarChart`, `LineChart`, `AreaChart`, `ComboChart`). `max_y_labels` passes the value as the tick-count hint to both `Scale::linear_nice` (which sets the domain) and `nice_ticks` (which generates labels), giving approximately that many evenly-spaced, human-readable ticks. `min_y_labels` does the same, and if the nice-rounding step produces fewer ticks than requested it retries with a doubled hint (best-effort; capped at that retry if `max_y_labels` is also set). Setting both to the same value (e.g. `min_y_labels = max_y_labels = 12`) instructs the renderer to attempt exactly that many y-axis labels. If `min_y_labels > max_y_labels` the values are swapped internally so the constraint is always valid. Works correctly with positive/negative/mixed data, float values, `TickFormat`, `custom_y_formatter`, and `begin_at_zero`. Six new unit tests added (`test_y_labels_*` in `unit_tests.cc`).
+
+- **`CartesianOptions::max_x_labels`** — integer field (default `0` = unconstrained) that caps the number of x-axis category labels rendered. When set, a second step ceiling `ceil(n / max_x_labels)` is applied on top of the existing collision-avoidance skip, so the two constraints compose: collision avoidance prevents overlapping text; `max_x_labels` independently limits label count regardless of chart width. Useful for dense time-series categories (e.g. 100 daily date strings) where you want ~12 readable tick marks irrespective of pixel width.
+- **`examples/time_series_line_example.cc`** — demonstrates a 100-point daily time-series `LineChart`: decimates 100 → 25 points with `lttb_decimate_indexed`, uses `max_x_labels = 12` to show ~12 evenly-spaced date labels, and a standard y-axis label for pre-scaled GB values. Wired into `INSIGHTDOCK_BUILD_EXAMPLES` in CMake; gallery image at `docs-site/img/gallery/time_series_line.png`.
+
+- **`ComboChart` secondary (right) y-axis** — `add_bar_series()`/`add_line_series()` take an optional `secondary_axis` flag (default `false`, fully backward compatible); series flagged `true` are scaled against an independent right-side axis instead of sharing the left one, for series with different units or magnitude (e.g. session count vs. average duration). Implemented as generic `CartesianChart` hooks (`has_secondary_y_axis()`, `compute_y2_min()`/`compute_y2_max()`) plus `PlotContext::y_scale2`/`has_y2`, so any `CartesianChart` subclass can opt in the same way later; `BarChart`/`LineChart`/`AreaChart` are unaffected since the hooks default to disabled. New `CartesianOptions::y2_axis_label`/`y2_tick_format`/`custom_y2_formatter` mirror the existing left-axis fields. Right margin widens automatically when a secondary axis is active. Added `Font::draw_text_rotated_cw()` (right-axis label, reads top-to-bottom) alongside the existing `draw_text_rotated_ccw()` (left-axis label); both now share one `blit_rotated()` implementation. Covered by two new `unit_tests` cases, demonstrated in `examples/all_charts_raster_pdf.cc`'s combo chart page, and added to the public gallery: new `examples/combo_chart_example.cc`, a `combo_chart.png` reference baseline in `docs/gallery/` (`gallery_regression` CTest), and a section in `docs-site/examples.md` — closing the gap where `ComboChart` (added in Phase 0.6) had never been added to the gallery/regression baseline or docs site.
+- **`ScatterChart`** (`include/insightdock/scatter_chart.h`, `src/scatter_chart.cc`) — scatter and bubble charts with continuous numeric x/y axes (not a category list, unlike `BarChart`/`LineChart`). Set `ScatterPoint::radius` to enable the bubble variant; size scales between `ScatterOptions::min_bubble_radius` and `max_bubble_radius`. Derives directly from `Chart` rather than `CartesianChart` since the x-axis must be continuous. Demonstrated in `examples/scatter_bubble_example.cc`; covered by `gallery_regression` and `unit_tests`.
+- **Native SVG vector pie** — `ExportOptions::svg_backend` (`SvgBackend::Raster` default, `SvgBackend::Vector`) mirrors the existing `PdfBackend` pattern. `Vector` mode emits real `<path>`/`<circle>`/`<text>` SVG for `PieChart` (`src/svg_pie.cc`) instead of a base64-inlined raster PNG; other chart types fall back to raster embed. Handles the single-100%-slice edge case with a `<circle>` (an arc with identical start/end points is degenerate).
+- **LTTB decimation** (`include/insightdock/decimate.h`, `src/decimate.cc`) — `lttb_decimate()` and the category-index convenience `lttb_decimate_indexed()` implement largest-triangle-three-buckets downsampling for reducing large line/area datasets to a target point count without losing visual shape (peaks/valleys), as a pre-processing step before `LineChart`/`AreaChart`.
+- **`benchmarks/bench_render.cc`** — dependency-free `std::chrono` timing harness (`INSIGHTDOCK_BUILD_BENCHMARKS` CMake option, default `OFF`). Covers line render at 1k/10k/100k points, bar render (50×10), pie render (20 slices), PNG encode, and PDF raster export. Baseline numbers recorded in `docs/BENCHMARKS.md`.
+- **`docs-mrdocs` CI job** — runs `mrdocs docs/mrdocs.yml` and checks `docs/reference/index.html` is produced (`scripts/ci_docs_mrdocs.sh`).
+- **Gallery embedded in README** — pie/bar/line/area sample images now render inline in `README.md` instead of only being linked.
+- **`docs/mrdocs-theme/wrapper.html.hbs`** — mrdocs 0.8.0's stock HTML generator ships with zero CSS (plain browser-default white-on-black text, no typography/table/code-block styling). This is a themed replacement for its one layout template (clean type, bordered/zebra-striped tables, code chips, `prefers-color-scheme` dark mode) — copied over the installed `mrdocs` binary's own template before each generation, both by `scripts/ci_docs_mrdocs.sh` and the local steps in `docs/DOCUMENTATION.md`. `--addons` would require vendoring mrdocs's entire internal helpers/partials tree just to change one file, so this overwrites the single layout in place instead.
+- **One-stop MkDocs Material doc site** (`mkdocs.yml`, `docs-site/`, `scripts/build_docs_site.sh`) — pulled forward from the post-v1.0.0 plan in `FUTURE.md`: Home, Getting started, Examples (each example's full source transcluded from `examples/*.cc` via `pymdownx.snippets`, paired with its rendered output from `docs/gallery/`), API Reference (the MrDocs output copied in by the build script), and Comparison (transcludes `docs/COMPARISON.md` directly — single source of truth). Built and published to GitHub Pages via `.github/workflows/docs.yml`. Verified visually with headless Chrome screenshots, not just a successful `mkdocs build`.
+
+### Changed
+
+- **`-DBUILD_SHARED_LIBS=ON` + `-DINSIGHTDOCK_WITH_PODOFO=ON` verified end-to-end on OpenWrt** (x86_64/musl toolchain): `find_package(podofo CONFIG)` resolves, `libinsightdock.so` links against PoDoFo, and headers/CMake export/`.so` all stage correctly for downstream packages.
+- **Removed all company-internal code and CI in preparation for open-source release** — deleted `fuse/` (company samples/data/assets) and `.gitlab-ci.yml`; added GitHub Actions CI (`.github/workflows/ci.yml`: lint, clang-tidy, build-and-test, sanitizers; `.github/workflows/docs.yml`: MrDocs + MkDocs site published to GitHub Pages) and standard GitHub OSS scaffolding (`CODE_OF_CONDUCT.md`, issue/PR templates). CMake/Makefile output filename is `libinsightdock.a`/`.so` (single build, no internal/OSS naming split).
+
+### Fixed
+
+- **Vertical `ReferenceLine`/`ReferenceBand` rendered mirrored (right-to-left) on the category axis** — `CartesianChart::PlotContext::x_scale` was built as `Scale(0.0, n, plot.left(), plot.right())`, but `Scale::to_pixel()` uses the same "domain min → pixel_max, domain max → pixel_min" convention on every axis (the convention that makes higher y-values render higher on screen), so `x_scale.to_pixel()` mapped category index 0 to the *right* edge and index n to the *left* edge — backwards from how `BarChart`/`LineChart`/`AreaChart`/`ComboChart` actually position category geometry (`plot.left() + slot*(i + 0.5)`, left-to-right). `x_scale` had no other reader anywhere in the codebase before the reference-line/band feature above started calling `to_pixel()` on it directly, so the bug was latent until that new code path exercised it. Fixed by swapping the `pixel_min`/`pixel_max` arguments at `x_scale`'s single construction site in `cartesian_chart.cc` (`ScatterChart` already applies the same swap to its own x-axis scale, for the same reason). Found by manually rendering `BarChart`/`LineChart` with both a horizontal and a vertical reference line and inspecting the output — the "renders without crashing" unit test added alongside the original feature didn't catch it. Two new regression tests (`test_reference_line_vertical_not_mirrored_bar`/`_line_chart`) assert a reference line near the low end of the category domain renders left of one near the high end; both fail against the pre-fix code.
+- **Makefile (OpenWrt core build) was missing `src/svg_writer.cc`** from `SRCS` — any build that actually called `ChartExporter::save/encode` with SVG output (or just linked `export.cc`, which references `write_svg`/`encode_svg` unconditionally) would fail at link time. Only the CMake build had this source listed. Found while wiring `src/svg_pie.cc` into the same conditional-pie block.
+- **Diagnosed intermittent `std::bad_alloc`/`std::length_error` reported from `ChartExporter::save()`** — not a defect in `pie_chart.cc`/`export.cc`/`chart.h` (verified clean across 4000+ ASan/UBSan render/save cycles, including with PoDoFo linked). Root cause was an ABI-incompatible *stale install*: a `cmake --install` had been re-run against a build directory whose library binary was never rebuilt after `ExportOptions` grew from 16 to 20 bytes (Phase 0.6's `svg_backend` field). That crosses the x86-64 SysV ABI's struct-passing threshold (≤16 bytes passed in registers, >16 bytes passed on the stack): callers built against the newer 20-byte header pass `ExportOptions` on the stack, while the stale precompiled `ChartExporter::save()`/`render_mutable()` (16-byte header) read it out of registers instead, so `opts.supersample` came back as register garbage. When that garbage was `>1`, `SupersampleScope` multiplied the chart's width/height by it, and `ImageBuffer`'s backing `std::vector` allocation blew up. Root-caused with a GDB hardware watchpoint (ASLR had to be kept enabled — GDB disables it by default, which is why the bug never reproduced under a debugger or under ASan's allocator) and confirmed by relinking the same stale `.a` against its matching old header (0/60 failures) vs. the mismatched new header (~50% failures). No source change required; see the new "Installing for out-of-tree consumers" note in `CLAUDE.md`.
+- **`docs/mrdocs.yml` defined `INSIGHTDOCK_HAS_PODOFO=0`** to skip PoDoFo includes during doc generation, but `export.cc` guards with `#ifdef INSIGHTDOCK_HAS_PODOFO` (existence, not value) — so the `=0` define still satisfied the guard and pulled in `<podofo/podofo.h>`, which isn't available at doc-gen time, aborting the whole run. Fixed by not defining the macro at all. Latent since the job was introduced; never surfaced because it always short-circuited before mrdocs was installed on the runner.
+
+## [0.7.0] — 2026-06-18 — Phase 0.5 / 0.6 foundations
+
+### Added
+
+- **`PdfReportBuilder::draw_chart()` / `draw_chart_flow()`** — embed any `Chart` (bar/line/pie) into a `PdfReportBuilder`-driven report at mm coordinates, via `ChartExporter::draw_pdf()`. `draw_chart_flow()` adds an optional caption, border, and auto-pagination (`ensure_space()`), advancing the builder's vertical cursor like `draw_table()`. Closes the Phase 0.5 blocker for the Phase 1 "Multi-page PDF report builder" roadmap item. Demonstrated in `examples/podofo_report_example.cc`.
+- **`insightdock/pdf/report.h`** — `PdfReportBuilder` for multi-page PDF reports: tables, section headings, footers, pagination, and inline formatted text (PoDoFo build only).
+- **Log and DateTime scale implementations** — `ScaleType::Log` uses base-10 mapping; `ScaleType::DateTime` uses Unix-timestamp ticks with automatic time-step selection. `TickFormat::DateTime` formats axis labels as `YYYY-MM-DD HH:MM`.
+- **`OutputFormat::Svg`** and **`svg_writer.cc`** — SVG export via PNG raster base64-inlined in SVG XML (`ChartExporter::save("chart.svg")`).
+- **`AreaChart`** — area and stacked-area charts on `CartesianChart` (`area_options().stacked`).
+- **Visual regression** — `tests/gallery_regression.cc` CTest target compares renders against reference PNGs in `docs/gallery/`. Regenerate with `UPDATE_GALLERY=1`.
+- **`lint-tidy` CI job** — clang-tidy on `src/*.cc` with `compile_commands.json` (optional until toolchain is validated).
+- **32 unit tests** (was 27) — log/datetime scale roundtrip and SVG encode coverage.
+
+### Added (prior Phase 0.5)
+
+- **Makefile feature-selection flags** — three variables let you trim the library for size-constrained targets such as OpenWrt routers:
+  - `CHART_TYPES` (default `pie bar line`) — omit chart types you don't need; each omitted type is not compiled, and `cartesian_chart.cc` is skipped automatically when neither `bar` nor `line` is selected.
+  - `EXPORT_FORMATS` (default `png jpeg`) — omit `jpeg` to strip the JPEG codec and recover ~15 KB.
+  - `FONT_MODE` (default `embedded`) — set to `system` to drop the 20 KB baked-in TTF and load a font from the filesystem at runtime instead (see `Font::load_from_file()`).
+- **`INSIGHTDOCK_NO_EMBEDDED_FONT` preprocessor guard** in `font.cc` — when defined, `Font::Font()` is a no-op (font not loaded); caller must invoke `Font::load_from_file()` or `Font::load_from_memory()` before rendering.
+- **`INSIGHTDOCK_NO_JPEG` preprocessor guard** in `png_writer.cc` — stubs `write_jpeg` / `encode_jpeg` to return false / empty so the linker can GC the stb JPEG codec via `--gc-sections`.
+- **`INSIGHTDOCK_HAS_PIE` preprocessor guard** in `export.cc` — `SupersampleScope` only references `PieChart` and `PieOptions` when pie support is compiled in, preventing linker errors in pie-less builds.
+
+**Measured footprint reduction** (pie + PNG + system font vs full default build):
+
+| Configuration | Code section |
+|---|---|
+| Full (all types, embedded font, JPEG) | ~287 KB |
+| Minimal (pie only, PNG only, system font) | ~90 KB |
+| With `-Os -s` strip (estimated) | ~45–55 KB |
+
+- **`insightdock/error.h`** — `ChartError` enum + `ChartResult<T>` result type. `ChartExporter::save()` now returns `ChartResult<void>`; `encode()` returns `ChartResult<std::vector<uint8_t>>`. Both are contextually convertible to `bool` so existing `if (!save(...))` callers compile unchanged.
+- **`insightdock/theme.h`** — `ChartTheme` struct with `light()` and `dark()` built-in presets. `Chart::apply_theme(theme)` batch-applies background, title, axis, grid, and text colors plus font size.
+- **`ScaleType` enum** (`Linear`, `Log`, `DateTime`) in `scale.h` with `Scale::set_type()` / `Scale::type()` accessors. API shape is established; Log and DateTime implementations follow in Phase 0.5/0.6.
+- **`TickFormat` enum** (`Raw`, `SI`, `Currency`, `Percent`) and `CartesianOptions::y_tick_format` in `cartesian_chart.h`. Custom formatting via `CartesianOptions::custom_y_formatter` callback. Replaces the hard-coded `%.0f` rendering in `cartesian_chart.cc`.
+- **`CartesianChart::draw_overlay(PlotContext&)`** — virtual hook called after `draw_series()`. Default no-op; override to add reference lines, annotations, watermarks, or combo-chart geometry without replacing the full render pipeline.
+- **`Font::TextMetrics`** struct (`width`, `height`) and **`Font::measure(text, size)`** in `font.h` / `font.cc` — measures text at an explicit pixel size without changing font state.
+- **Label collision avoidance** for Cartesian x-axis labels — `draw_axes_and_grid()` now computes a skip step so adjacent labels do not overlap at any category count.
+- **`tests/unit_tests.cc`** — 27 deterministic unit tests for `Scale`, `Palette`, `ImageBuffer`, `ChartResult`, `ChartTheme`, and `Font::measure`. Registered as `unit_tests` CTest target alongside the existing smoke tests.
+- **CI sanitizer jobs** — ASan + UBSan build and test run (clang).
+- **PoDoFo CI made automatic** — the PoDoFo build runs by default now instead of manual-only; checks that `podofo_report_example` produces a non-empty PDF.
+
+### Added
+
+- **`ComboChart`** — overlays grouped bar series and line series on the same Cartesian canvas; uses the `draw_overlay()` hook introduced in Phase 0.5. `add_bar_series()` / `add_line_series()` API mirrors the existing `BarChart` / `LineChart` interfaces. Registered in `CMakeLists.txt`, `Makefile`, and `include/insightdock/charts.h`.
+- **`examples/all_charts_raster_pdf.cc`** — five-page A4 PDF (Bar, Line, Area, Combo, Pie) rendered at 2× supersample via `ChartExporter::draw_pdf()`. Demonstrates raster-quality zoom testing for all chart types in a single document.
+- **`INSIGHTDOCK_HAS_PIE=1`** unconditionally defined on `InsightDockCharting` in `CMakeLists.txt` — `pie_chart.cc` is always compiled and `SupersampleScope` in `export.cc` needs this guard to scale pie center/radius correctly at supersample > 1.
+
+### Fixed
+
+- **Pie supersample rendering** — `INSIGHTDOCK_HAS_PIE` was never defined in the CMake build, so the `SupersampleScope` pie-scaling block in `src/export.cc` was dead code. At supersample > 1 the canvas doubled but `pie_opts_.center_x/y/radius` stayed at original values, placing the pie in the upper-left corner of the scaled buffer before downsampling. Fixed by the unconditional `INSIGHTDOCK_HAS_PIE=1` definition above.
+- **Legend/x-axis label overlap in Cartesian charts** — `CartesianChart::compute_plot_rect()` used a fixed 36 px bottom margin that did not account for all three stacked layers (x-axis category labels, legend row, optional x-axis title). The margin is now computed dynamically from `font.line_height()`: `8 + lh + 8 + (lh + 10) + x_title_h`. `draw_legend()` positioning updated to match.
+- **Pie chart label / percentage overlap** — long slice labels are word-wrapped at the chart edge, drawn one line at a time (PoDoFo `DrawText` does not honor `\n`), and the percentage stays anchored to the elbow callout with wrapped lines growing upward. Fixed in raster (`pie_chart.cc`) and PoDoFo vector (`podofo_vector.cc`).
+- **Inverted Y-axis** — `CartesianChart` had `pixel_min` / `pixel_max` swapped in the `Scale` construction, causing bar and line charts to render with higher values at the bottom and bars growing downward from zero. Fixed by passing `(plot.top(), plot.bottom())` in the correct order to `Scale::linear_nice`. Bar and line charts now render with the standard orientation (higher values higher on the chart).
+- **`ImageBuffer::pixel()` OOB** — the header documented "returns `nullptr` if out of bounds" but the implementation never checked bounds. Fixed with explicit `x >= width_ || y >= height_` guards.
+
+---
+
+## [0.6.0] — 2026-06-05
+
+### Added
+
+- **InsightDock rebrand:** namespace `insightdock::charts`, headers under `include/insightdock/`
+- Umbrella header `insightdock/charts.h` and PDF header `insightdock/pdf/podofo.h`
+- CMake project `InsightDockCharting`, target `InsightDock::Charting`, `find_package(InsightDock)`
+- CI pipeline (core build + CTest)
+- Smoke tests in `tests/` (PNG/JPEG magic-byte checks)
+- Project metadata: LICENSE (MIT), NOTICE, CONTRIBUTING, SECURITY, brand clearance notes
+- Documentation: API policy, release checklist, benchmarks strategy, future roadmap items
+- `.clang-format`, `.editorconfig`, `.gitattributes`
+- `insightdock/detail/math_constants.h` for portable `M_PI`
+
+### Changed
+
+- Generic examples use InsightDock naming
+- PoDoFo generated include dirs are `PRIVATE` on the library target
+- Makefile produces `libInsightDockCharting.a`
+
+### Removed
+
+- Public `chartlib` namespace and `include/chartlib/` headers (clean break, no compatibility aliases)
+
+## [0.5.0] — prior release (chartlib)
+
+- `ChartExporter` unified export API (PNG, JPEG, PDF raster/vector)
+- Native vector PDF pies via `podofo_vector`
+- JPEG export via stb_image_write
+
+## [0.3.0] — prior release
+
+- Captive Portal PDF example, vector PoDoFo pies, Tableau-10 palette
+
+[0.7.0]: https://github.com/InsightDock/insightdock-charting-cpp/releases/tag/v0.7.0
+[0.6.0]: https://github.com/InsightDock/insightdock-charting-cpp/releases/tag/v0.6.0

@@ -1,0 +1,59 @@
+site_name: InsightDock Charting Library for C++
+site_description: Headless C++17 charting for PNG/JPEG/SVG/PDF reports — MIT licensed.
+
+docs_dir: docs-site
+site_dir: site
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - navigation.indexes
+    - content.code.copy
+    - search.suggest
+
+markdown_extensions:
+  - admonition
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.superfences
+  - pymdownx.highlight
+  - pymdownx.snippets:
+      base_path: ["."]
+      check_paths: true
+
+nav:
+  - Home: index.md
+  - Getting started: getting-started.md
+  - Concepts: concepts.md
+  - Guides:
+      - Usage guide: guides/usage.md
+      - PDF reports: guides/pdf-reports.md
+      - Troubleshooting: guides/troubleshooting.md
+  - Chart types:
+      - Pie: chart-types/pie.md
+      - Bar: chart-types/bar.md
+      - Line: chart-types/line.md
+      - Area: chart-types/area.md
+      - Combo: chart-types/combo.md
+      - Scatter & bubble: chart-types/scatter.md
+  - Examples: examples.md
+  - API Reference: api/index.html
+  - Comparison: comparison.md
+  - Changelog: changelog.md

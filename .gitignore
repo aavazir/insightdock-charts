@@ -1,0 +1,69 @@
+# Build directories
+build*/
+out/
+target/
+
+# CI-fetched tooling (docs-mrdocs job)
+.mrdocs-tool/
+
+# Object files and static libs
+*.o
+*.a
+*.so
+*.dylib
+
+# Example binaries (Make / CMake in-tree)
+example_main
+bar_line_example
+podofo_report_example
+insightdock_smoke_tests
+chart_example
+
+# Libraries (in-tree Make)
+libinsightdock.a
+libchartlib.a
+
+# Generated chart/report outputs (local runs)
+*.png
+*.jpg
+*.jpeg
+*.pdf
+!docs/gallery/*.png
+
+# CMake generated files (when building in-source — prefer build/)
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+CTestTestfile.cmake
+install_manifest.txt
+compile_commands.json
+_deps/
+Testing/
+
+# PoDoFo subproject build artifacts
+podofo/
+
+# IDE / editor
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
+
+# Python (font subset script)
+__pycache__/
+*.pyc
+.venv/
+
+# Generated API docs
+# MrDocs HTML (primary)
+docs/reference/
+# Optional Doxygen fallback
+docs/doxygen/html/
+
+# MkDocs site (docs-site/ is markdown source; api/ and img/gallery/ are
+# assembled by scripts/build_docs_site.sh from docs/reference/ + docs/gallery/)
+.venv-docs/
+site/
+docs-site/api/
+docs-site/img/gallery/

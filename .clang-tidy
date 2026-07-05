@@ -1,0 +1,10 @@
+---
+Checks: >
+  bugprone-use-after-move,
+  bugprone-undelegated-constructor,
+  clang-analyzer-core.CallAndMessage,
+  clang-analyzer-core.DivideZero,
+  modernize-use-nullptr
+WarningsAsErrors: ''
+HeaderFilterRegex: ''
+FormatStyle: none

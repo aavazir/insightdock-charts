@@ -1,0 +1,31 @@
+# MrDocs — primary API reference generator for InsightDock (modern C++ OSS standard).
+# https://mrdocs.com
+#
+# yaml-language-server: $schema=https://mrdocs.com/docs/mrdocs/develop/_attachments/mrdocs.schema.json
+
+# Paths relative to this file (docs/)
+source-root: ../include
+output: reference
+
+generator: html
+multipage: true
+
+# Public API headers only (exclude embedded_font blob from reference index noise)
+input:
+  - ../include/insightdock
+
+includes:
+  - ../include
+
+# Use compile_commands.json from a CMake configure (recommended)
+compilation-database: ../build/compile_commands.json
+
+# Deliberately do NOT define INSIGHTDOCK_HAS_PODOFO here: the guard in
+# export.cc is `#ifdef INSIGHTDOCK_HAS_PODOFO` (existence, not value), so
+# `=0` would still satisfy it and pull in <podofo/podofo.h>, which isn't
+# available at doc-gen time. Leaving it undefined (the default when the
+# docs job's CMake configure omits -DINSIGHTDOCK_WITH_PODOFO=ON) correctly
+# skips those blocks.
+
+use-system-stdlib: true
+use-system-libc: true

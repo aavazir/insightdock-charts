@@ -1,0 +1,35 @@
+---
+description: Run clang-format before committing C++ changes (matches CI lint job)
+globs: "{src,include,tests}/**/*.{cc,h}"
+alwaysApply: false
+---
+
+# clang-format before commit
+
+CI `lint` uses **clang-format 18** with `--dry-run --Werror` on all `src/`, `include/`, and `tests/` `*.cc` / `*.h` files.
+
+## Before every commit that touches C++
+
+1. Format and verify:
+   ```bash
+   ./scripts/check-format.sh --fix
+   ./scripts/check-format.sh
+   ```
+2. If local `clang-format` is v14, use Docker (matches CI):
+   ```bash
+   docker run --rm -v "$PWD:/src" -w /src ubuntu:24.04 bash -c \
+     'apt-get update -qq && apt-get install -qq -y clang-format-18 >/dev/null && \
+      find src include tests -type f \( -name "*.cc" -o -name "*.h" \) -print0 \
+      | xargs -0 clang-format-18 -i'
+   ./scripts/check-format.sh
+   ```
+
+## Enable the git hook (once per clone)
+
+```bash
+git config core.hooksPath .githooks
+```
+
+## Style
+
+Follow `.clang-format` (LLVM, column limit 100). Do not hand-wrap lines in ways that v18 re-breaks — run the checker instead.

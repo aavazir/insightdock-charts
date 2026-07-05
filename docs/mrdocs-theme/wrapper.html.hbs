@@ -1,0 +1,137 @@
+{{! The wrapper for single page documentation or symbols in a multipage documentation }}
+{{! This content is not indented and neither is the partial to preserve code blocks and minimize diffs }}
+{{! Customized from mrdocs's stock wrapper.html.hbs: stock output ships with no CSS at all (see
+    docs/PAGES_HOSTING.md / scripts/ci_docs_mrdocs.sh). This adds a self-contained <style> block —
+    no extra asset files to copy around — and keeps the original markup/partials untouched. }}
+<html lang="en">
+<head>
+{{! Title }}
+{{#if @root.config.multipage }}
+{{! Multipage documentation: symbol is available to the wrapper }}
+<title>Reference{{#if symbol.name}}: {{symbol.name}}{{/if}}</title>
+{{else}}
+{{! Single page documentation: symbol is not available to the wrapper }}
+<title>Reference</title>
+{{/if}}
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+:root {
+  --bg: #ffffff;
+  --fg: #1f2328;
+  --muted: #6e7781;
+  --accent: #2563eb;
+  --border: #d8dee4;
+  --code-bg: #f6f8fa;
+  --table-stripe: #f6f8fa;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0d1117;
+    --fg: #e6edf3;
+    --muted: #9198a1;
+    --accent: #58a6ff;
+    --border: #30363d;
+    --code-bg: #161b22;
+    --table-stripe: #11161c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 2.5rem 1.5rem 4rem;
+  max-width: 960px;
+  margin-inline: auto;
+  background: var(--bg);
+  color: var(--fg);
+  font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+}
+h1, h2, h3, h4 {
+  font-weight: 600;
+  line-height: 1.25;
+}
+h1 {
+  font-size: 1.85rem;
+  margin: 0 0 1.5rem;
+  padding-bottom: 0.6rem;
+  border-bottom: 1px solid var(--border);
+}
+h2 {
+  font-size: 1.3rem;
+  margin: 2.2rem 0 0.8rem;
+}
+h3 {
+  font-size: 1.05rem;
+  margin: 1.6rem 0 0.6rem;
+}
+p { margin: 0.6rem 0; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+code {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.875em;
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.1em 0.4em;
+}
+pre {
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 1rem;
+  overflow-x: auto;
+}
+pre code {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 0.85em;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0 1.5rem;
+  font-size: 0.92em;
+}
+th, td {
+  border: 1px solid var(--border);
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  vertical-align: top;
+}
+thead th {
+  background: var(--code-bg);
+  font-weight: 600;
+}
+tbody tr:nth-child(even) { background: var(--table-stripe); }
+body > div:last-of-type {
+  margin-top: 3rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+}
+body > div:last-of-type h4 {
+  font-size: 0.85rem;
+  font-weight: 400;
+  margin: 0;
+}
+</style>
+</head>
+<body>
+<div>
+{{#if @root.config.multipage }}
+{{! Multipage documentation: main title is the linked qualified symbol name }}
+<h1>{{> symbol/qualified-name-title symbol }}</h1>
+{{else}}
+{{! Single page documentation: main title is "Reference" }}
+<h1>Reference</h1>
+{{/if}}
+{{! Content generated with index.hbs }}
+{{{contents}}}
+</div>
+<div>
+<h4>Created with <a href="https://www.mrdocs.com">MrDocs</a></h4>
+</div>
+</body>
+</html>

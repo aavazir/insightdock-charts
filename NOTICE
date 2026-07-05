@@ -1,0 +1,14 @@
+InsightDock Charting Library for C++
+=====================================
+
+This project bundles or references the following third-party components:
+
+stb_truetype.h / stb_image_write.h
+  Public domain / MIT (see third_party/ headers)
+
+Embedded font subset (include/insightdock/embedded_font.h)
+  Generated from a system TTF; verify font license before redistribution.
+
+PoDoFo (optional PDF backend)
+  Not vendored. External dependency when INSIGHTDOCK_WITH_PODOFO=ON.
+  See https://github.com/podofo/podofo for license terms.

@@ -1,0 +1,20 @@
+# clangd / IDE IntelliSense (Cursor, VS Code, CLion, etc.)
+# Run: scripts/setup_clangd.sh   (generates build/compile_commands.json)
+
+CompileFlags:
+  Add:
+    - -std=c++17
+    - -Iinclude
+    - -Ithird_party
+
+CompilationDatabase: build
+
+Diagnostics:
+  # Reduce noise from third-party headers (stb) when opened without a TU
+  Suppress:
+    - unused-includes
+  UnusedIncludes: Strict
+  MissingIncludes: Strict
+
+Index:
+  Background: Build
