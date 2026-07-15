@@ -10,12 +10,16 @@ output: reference
 generator: html
 multipage: true
 
-# Public API headers only (exclude embedded_font blob from reference index noise)
 input:
   - ../include/insightdock
 
 includes:
   - ../include
+
+# Skip the embedded font blob: it's a generated data table, not documented API,
+# and would otherwise show up as reference index noise.
+exclude-patterns:
+  - "**/embedded_font.h"
 
 # Use compile_commands.json from a CMake configure (recommended)
 compilation-database: ../build/compile_commands.json

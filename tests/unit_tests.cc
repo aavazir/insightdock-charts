@@ -102,6 +102,21 @@ static void test_scale_linear_nice_equal_values() {
   CHECK(s.max() > s.min());
 }
 
+static void test_scale_log_nice_covers_data() {
+  auto s = Scale::log_nice(30.0, 4000.0, 0.0f, 400.0f);
+  CHECK(s.type() == ScaleType::Log);
+  CHECK(s.min() <= 30.0);
+  CHECK(s.max() >= 4000.0);
+}
+
+static void test_scale_log_nice_clamps_non_positive_min() {
+  // A log domain can't include zero/negative values; must not crash.
+  auto s = Scale::log_nice(0.0, 100.0, 0.0f, 400.0f);
+  CHECK(s.type() == ScaleType::Log);
+  CHECK(s.min() > 0.0);
+  CHECK(s.max() >= 100.0);
+}
+
 static void test_scale_type_default() {
   Scale s;
   CHECK(s.type() == ScaleType::Linear);
@@ -1374,6 +1389,218 @@ static void test_pie_data_label_draws_ink_in_slice() {
 }
 
 // ---------------------------------------------------------------------------
+// Log y-axis / DateTime x-axis chart-level wiring
+// ---------------------------------------------------------------------------
+// Scale's own Log/DateTime math is covered above (test_scale_log_*, test_scale_datetime_*);
+// these check the chart-level wiring: CartesianOptions::y_scale_type/x_scale_type actually
+// reach CartesianChart::render(), and unsupported chart types safely ignore x_scale_type.
+
+static void test_line_chart_log_y_axis_renders_and_spans_range() {
+  LineChart chart;
+  chart.options().width = 300;
+  chart.options().height = 200;
+  chart.options().legend.enabled = false;
+  chart.options().background = Color::white();
+  chart.cartesian_options().y_scale_type = ScaleType::Log;
+  chart.set_categories({"A", "B", "C"});
+  chart.add_series("S", {1.0, 100.0, 10000.0}, Color::black());
+  auto img = chart.render();
+  CHECK(img.width() == 300 && img.height() == 200);
+  // Line/markers drawn somewhere across the plot, not collapsed into one corner
+  // (the begin_at_zero-forces-domain-to-0 bug made every tick/gridline stack at
+  // the very top of the plot instead of spanning it).
+  CHECK(has_ink_in_region(img, 0, 150, 300, 200, Color::white()));
+  CHECK(has_ink_in_region(img, 0, 20, 300, 70, Color::white()));
+}
+
+static void test_line_chart_datetime_x_axis_positions_by_value_not_index() {
+  LineChart chart;
+  chart.options().width = 640;
+  chart.options().height = 300;
+  chart.options().legend.enabled = false;
+  chart.options().background = Color::white();
+  chart.cartesian_options().x_scale_type = ScaleType::DateTime;
+  Color const mark = Color::rgb(10, 10, 10);
+  double const day = 86400.0;
+  double const base = 1700000000.0;
+  // 3 points: first two 1 day apart, last one 20 days after the second — pixel
+  // gap between point 2/3 should be far larger than between point 1/2 if x_scale
+  // truly maps by timestamp rather than even per-point index slots.
+  chart.set_x_values({base, base + day, base + day + 20.0 * day});
+  chart.add_series("S", {10.0, 10.0, 10.0}, mark);
+  chart.line_options().show_points = false;
+  chart.line_options().line_width = 3.0f;
+  auto img = chart.render();
+
+  auto find_ink_x = [&](int x_from, int x_to, int y_mid) -> int {
+    for (int x = x_from; x < x_to; ++x) {
+      for (int y = y_mid - 3; y <= y_mid + 3; ++y) {
+        auto const *p = img.pixel(static_cast<std::size_t>(x), static_cast<std::size_t>(y));
+        if (p && p[0] < 100 && p[1] < 100 && p[2] < 100)
+          return x;
+      }
+    }
+    return -1;
+  };
+
+  // All three points share y=10, so the flat line sits at one pixel row; scan for
+  // where the stroke begins (leftmost point) to locate the y row, then measure the
+  // stroke's horizontal extent up to the midpoint vs. from the midpoint to the end.
+  int y_row = -1;
+  for (int y = 0; y < static_cast<int>(img.height()) && y_row < 0; ++y) {
+    if (find_ink_x(0, static_cast<int>(img.width()), y) >= 0)
+      y_row = y;
+  }
+  CHECK(y_row >= 0);
+  if (y_row >= 0) {
+    int left_x = find_ink_x(0, static_cast<int>(img.width()), y_row);
+    int right_x = -1;
+    for (int x = static_cast<int>(img.width()) - 1; x >= 0; --x) {
+      for (int y = y_row - 3; y <= y_row + 3; ++y) {
+        auto const *p = img.pixel(static_cast<std::size_t>(x), static_cast<std::size_t>(y));
+        if (p && p[0] < 100 && p[1] < 100 && p[2] < 100) {
+          right_x = x;
+          break;
+        }
+      }
+      if (right_x >= 0)
+        break;
+    }
+    CHECK(left_x >= 0 && right_x > left_x);
+    // The 1-day gap should occupy roughly 1/21st of the total span the 21-day
+    // range covers; give generous slack for line stroke width / AA bleed.
+    float total = static_cast<float>(right_x - left_x);
+    float expected_first_gap = total / 21.0f;
+    CHECK(expected_first_gap > 0.0f && expected_first_gap < total * 0.35f);
+  }
+}
+
+static void test_bar_chart_ignores_datetime_x_scale_type() {
+  // BarChart doesn't override supports_continuous_x_axis(), so setting
+  // x_scale_type = DateTime (with no x_values even provided) must be a no-op —
+  // identical output to leaving it at the Linear default.
+  auto make = [](ScaleType type) {
+    BarChart bar;
+    bar.options().width = 300;
+    bar.options().height = 200;
+    bar.cartesian_options().x_scale_type = type;
+    bar.set_categories({"Q1", "Q2", "Q3"});
+    bar.add_series("Rev", {10, 20, 15}, Color::rgb(40, 90, 200));
+    return bar.render();
+  };
+  auto linear = make(ScaleType::Linear);
+  auto datetime = make(ScaleType::DateTime);
+  CHECK(linear.data() == datetime.data());
+}
+
+static void test_cartesian_x_values_roundtrip() {
+  LineChart chart;
+  CHECK(chart.x_values().empty());
+  chart.set_x_values({1.0, 2.0, 3.0});
+  CHECK(chart.x_values().size() == 3);
+  CHECK(chart.x_values()[1] == 2.0);
+}
+
+// ---------------------------------------------------------------------------
+// Horizontal bar orientation
+// ---------------------------------------------------------------------------
+
+static int rightmost_ink_column(ImageBuffer const &img, int y, Color const &background) {
+  for (int x = static_cast<int>(img.width()) - 1; x >= 0; --x) {
+    auto const *p = img.pixel(static_cast<std::size_t>(x), static_cast<std::size_t>(y));
+    if (p && (p[0] != background.r || p[1] != background.g || p[2] != background.b))
+      return x;
+  }
+  return -1;
+}
+
+// Rightmost pixel matching a specific series color (not axis lines/gridlines/labels,
+// which use their own distinct colors) — for isolating one bar's extent.
+static int rightmost_matching_column(ImageBuffer const &img, int y, Color const &target) {
+  for (int x = static_cast<int>(img.width()) - 1; x >= 0; --x) {
+    auto const *p = img.pixel(static_cast<std::size_t>(x), static_cast<std::size_t>(y));
+    if (p && p[0] == target.r && p[1] == target.g && p[2] == target.b)
+      return x;
+  }
+  return -1;
+}
+
+static void test_bar_chart_horizontal_renders_correct_size() {
+  BarChart chart;
+  chart.options().width = 300;
+  chart.options().height = 200;
+  chart.bar_options().orientation = BarOrientation::Horizontal;
+  chart.set_categories({"A", "B"});
+  chart.add_series("S", {10, 20});
+  auto img = chart.render();
+  CHECK(img.width() == 300 && img.height() == 200);
+  CHECK(chart.orientation() == BarOrientation::Horizontal);
+}
+
+static void test_bar_chart_horizontal_bar_length_reflects_value() {
+  // A larger value must extend further right than a smaller one, along its own row —
+  // the core geometric contract of a horizontal bar (value = length, not height).
+  BarChart chart;
+  chart.options().width = 400;
+  chart.options().height = 200;
+  chart.options().legend.enabled = false;
+  chart.options().background = Color::white();
+  chart.bar_options().orientation = BarOrientation::Horizontal;
+  chart.bar_options().group_gap = 0.0f;
+  chart.set_categories({"Small", "Large"});
+  chart.add_series("S", {10, 90}, Color::black());
+  auto img = chart.render();
+
+  // "Small" (category index 0) is drawn above "Large" (index 1); find a row inside
+  // each bar's band by scanning for the series' own fill color (not axis lines,
+  // gridlines, or labels, which use other colors), then compare how far right each
+  // bar's ink extends.
+  Color const black = Color::black();
+  int small_row = -1;
+  for (int y = 0; y < static_cast<int>(img.height()); ++y) {
+    if (rightmost_matching_column(img, y, black) >= 0) {
+      small_row = y;
+      break;
+    }
+  }
+  int large_row = -1;
+  for (int y = static_cast<int>(img.height()) - 1; y >= 0; --y) {
+    if (rightmost_matching_column(img, y, black) >= 0) {
+      large_row = y;
+      break;
+    }
+  }
+  CHECK(small_row >= 0 && large_row >= 0 && large_row > small_row);
+  int small_x = rightmost_matching_column(img, small_row, black);
+  int large_x = rightmost_matching_column(img, large_row, black);
+  CHECK(small_x >= 0 && large_x >= 0);
+  CHECK(large_x > small_x);
+}
+
+static void test_bar_chart_horizontal_ignores_reference_lines() {
+  // ReferenceLine orientation assumes a vertical value axis; horizontal mode must
+  // silently skip them (documented v1 scope limit) rather than draw them scrambled.
+  auto make = [](bool with_ref_line) {
+    BarChart chart;
+    chart.options().width = 300;
+    chart.options().height = 200;
+    chart.bar_options().orientation = BarOrientation::Horizontal;
+    chart.set_categories({"A", "B"});
+    chart.add_series("S", {10, 20}, Color::rgb(40, 90, 200));
+    if (with_ref_line) {
+      ReferenceLine rl;
+      rl.orientation = ReferenceOrientation::Horizontal;
+      rl.value = 15.0;
+      chart.cartesian_options().reference_lines.push_back(rl);
+    }
+    return chart.render();
+  };
+  auto without = make(false);
+  auto with = make(true);
+  CHECK(without.data() == with.data());
+}
+
+// ---------------------------------------------------------------------------
 // Runner
 // ---------------------------------------------------------------------------
 
@@ -1386,6 +1613,17 @@ int main() {
   test_combo_data_labels_render_without_crash();
   test_scatter_data_label_renders_without_crash();
   test_pie_data_label_draws_ink_in_slice();
+
+  // Log y-axis / DateTime x-axis chart-level wiring
+  test_line_chart_log_y_axis_renders_and_spans_range();
+  test_line_chart_datetime_x_axis_positions_by_value_not_index();
+  test_bar_chart_ignores_datetime_x_scale_type();
+  test_cartesian_x_values_roundtrip();
+
+  // Horizontal bar orientation
+  test_bar_chart_horizontal_renders_correct_size();
+  test_bar_chart_horizontal_bar_length_reflects_value();
+  test_bar_chart_horizontal_ignores_reference_lines();
 
   // Reference line / band overlay
   test_reference_line_horizontal_pixel_row_has_line_color();
@@ -1412,6 +1650,8 @@ int main() {
   test_scale_nice_ticks_within_domain();
   test_scale_linear_nice_covers_data();
   test_scale_linear_nice_equal_values();
+  test_scale_log_nice_covers_data();
+  test_scale_log_nice_clamps_non_positive_min();
   test_scale_type_default();
   test_scale_log_roundtrip();
   test_scale_log_ticks_ascending();

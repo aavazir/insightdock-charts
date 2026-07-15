@@ -1,4 +1,4 @@
-InsightDock Charting Library for C++
+InsightDock Charts for C++
 =====================================
 
 This project bundles or references the following third-party components:
@@ -7,7 +7,11 @@ stb_truetype.h / stb_image_write.h
   Public domain / MIT (see third_party/ headers)
 
 Embedded font subset (include/insightdock/embedded_font.h)
-  Generated from a system TTF; verify font license before redistribution.
+  DejaVu Sans, subsetted to printable ASCII (U+0020-U+007E) with fonttools'
+  pyftsubset (regeneration command in the header's comment). DejaVu Sans is
+  derived from Bitstream Vera and distributed under a permissive license that
+  explicitly allows embedding, redistribution, and modification (including
+  subsetting); see https://dejavu-fonts.github.io/License.html.
 
 PoDoFo (optional PDF backend)
   Not vendored. External dependency when INSIGHTDOCK_WITH_PODOFO=ON.

@@ -216,4 +216,23 @@ Scale Scale::linear_nice(double data_min, double data_max, float pixel_min, floa
   return s;
 }
 
+Scale Scale::log_nice(double data_min, double data_max, float pixel_min, float pixel_max,
+                      int max_ticks) {
+  data_min = clamp_positive(data_min, 1e-300);
+  data_max = clamp_positive(data_max, data_min * 1.001);
+  if (data_max <= data_min)
+    data_max = data_min * 10.0;
+
+  Scale s(data_min, data_max, pixel_min, pixel_max);
+  s.set_type(ScaleType::Log);
+  auto ticks = s.nice_ticks(max_ticks);
+  if (!ticks.empty()) {
+    // nice_ticks() only returns 1-2-5-mantissa values inside [data_min, data_max]; unlike
+    // linear_nice's padded range, that set doesn't necessarily reach the actual endpoints,
+    // so extend (never shrink) to guarantee the domain still covers all real data.
+    s.set_domain(std::min(data_min, ticks.front()), std::max(data_max, ticks.back()));
+  }
+  return s;
+}
+
 } // namespace insightdock::charts

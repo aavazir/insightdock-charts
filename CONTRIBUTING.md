@@ -1,4 +1,4 @@
-# Contributing to InsightDock Charting Library for C++
+# Contributing to InsightDock Charts for C++
 
 Thank you for improving InsightDock.
 

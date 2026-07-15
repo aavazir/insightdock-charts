@@ -11,10 +11,6 @@ int main() {
   chart.options().background = insightdock::charts::Color::white();
   chart.options().title = "Sample Pie";
 
-  insightdock::charts::PieOptions po;
-  po.radius = 250.0;
-  chart.set_pie_options(po);
-
   chart.add_slice("Revenue", 100.0);
   chart.add_slice("Expenses", 60.0);
   chart.add_slice("Profit", 40.0);

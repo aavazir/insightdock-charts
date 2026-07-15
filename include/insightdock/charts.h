@@ -3,7 +3,7 @@
 
 /**
  * @file charts.h
- * @brief Umbrella header for InsightDock Charting Library for C++.
+ * @brief Umbrella header for InsightDock Charts for C++.
  *
  * Include this single header for pie, bar, and line charts plus PNG/JPEG export.
  * For PDF/PoDoFo integration, also include @ref insightdock/pdf/podofo.h when built

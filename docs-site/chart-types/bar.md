@@ -38,6 +38,7 @@ forwarders onto the same struct.
 | Field | Default | Purpose |
 |---|---|---|
 | `mode` | `BarMode::Grouped` | `Grouped` or `Stacked`. |
+| `orientation` | `BarOrientation::Vertical` | `Vertical` (default) or `Horizontal` — see below. |
 | `group_gap` | `0.2` | Gap between category groups, as a fraction of slot width, `[0, 0.5]`. |
 | `bar_gap` | `0.1` | Gap between bars within a group (grouped mode only), `[0, 0.5]`. |
 | `corner_radius` | `0.0` | Rounds bar corners, in pixels. `0` = square (default). |
@@ -53,6 +54,25 @@ bar.bar_options().data_labels.enabled = true;
 ```
 
 `ComboChart`'s bar series share this same `BarOptions` struct via `combo.bar_options()`.
+
+## Horizontal orientation
+
+For rankings/leaderboards or category names too long to fit under a vertical x-axis, set
+`orientation` to draw bars extending rightward from a category axis on the left instead of
+upward from one at the bottom:
+
+```cpp
+BarChart bar;
+bar.bar_options().orientation = BarOrientation::Horizontal;
+bar.set_categories({"North America", "Europe", "Asia-Pacific", "Latin America", "Africa"});
+bar.add_series("Revenue", {320, 280, 410, 150, 95});
+```
+
+The left margin widens automatically to fit the longest category label. Grouped and stacked modes
+both work in horizontal orientation. Not available on `ComboChart` (its line-series geometry has
+no horizontal equivalent), and `ReferenceLine`/`ReferenceBand` overlays are not drawn in horizontal
+mode in v1 — their orientation semantics assume a vertical value axis, so `BarChart` silently skips
+them rather than rendering them scrambled.
 
 ## Shared `CartesianOptions`
 
@@ -70,6 +90,39 @@ bar.cartesian_options().min_y_labels = bar.cartesian_options().max_y_labels = 12
 See [Usage guide → Tick formatting](../guides/usage.md#tick-formatting) for the full `TickFormat`
 list and custom formatter callbacks, and [Concepts](../concepts.md#scale) for what
 `min_y_labels`/`max_y_labels` do under the hood.
+
+### Log y-axis
+
+`y_scale_type = ScaleType::Log` switches the primary (left) y-axis to a base-10 logarithmic
+mapping with power-of-10 / 1-2-5-mantissa "nice" ticks — for network traffic, latency, or
+financial data spanning multiple orders of magnitude, where a linear axis would flatten the low
+end into an unreadable line hugging the bottom:
+
+```cpp
+chart.cartesian_options().y_scale_type = ScaleType::Log;
+```
+
+`begin_at_zero` is ignored when the axis is `Log` (a log domain can't include zero). Works on
+`BarChart`, `LineChart`, `AreaChart`, and `ComboChart`'s primary axis; the secondary (right) axis
+stays Linear-only in v1. See `examples/log_scale_example.cc`.
+
+### Continuous DateTime x-axis
+
+`LineChart` and `AreaChart` (not `BarChart`/`ComboChart` — see below) can position points by real
+timestamp instead of an evenly-spaced category slot:
+
+```cpp
+chart.set_x_values({1774137600.0, 1774224000.0, 1774483200.0}); // Unix timestamps, any spacing
+chart.cartesian_options().x_scale_type = ScaleType::DateTime;
+chart.add_series("Data Consumed", {15.87, 22.43, 44.91});
+```
+
+Irregular gaps in the data render as irregular pixel spacing — a real time axis, not category
+labels that happen to look like dates. Axis ticks are generated from the numeric domain and
+formatted automatically (`YYYY-MM-DD HH:MM`). `BarChart`/`ComboChart` don't override the hook that
+enables this (`CartesianChart::supports_continuous_x_axis()`), so setting `x_scale_type` on them
+is a no-op — a fixed-width bar-per-category layout has no well-defined meaning for irregularly-
+spaced continuous positions. See `examples/time_series_line_example.cc`.
 
 ## Reference lines and bands
 
@@ -101,6 +154,7 @@ launch.label = "Launch";
 bar.cartesian_options().reference_lines.push_back(launch);
 ```
 
-Not available on `PieChart`/`ScatterChart` — they have no `draw_overlay()` hook to attach to. For
+Not available on `PieChart`/`ScatterChart` — they have no `draw_overlay()` hook to attach to — nor
+on `BarChart` in horizontal orientation (see above). For
 anything beyond a straight threshold line/band, `draw_overlay` is still the extension point — see
 [Concepts → Extending](../concepts.md#extending-the-draw_overlay-hook).

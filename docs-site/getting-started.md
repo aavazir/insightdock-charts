@@ -85,7 +85,7 @@ cmake --install build --prefix /opt/insightdock
 
 ```cmake
 find_package(InsightDock CONFIG REQUIRED)
-target_link_libraries(myapp PRIVATE InsightDock::Charting)
+target_link_libraries(myapp PRIVATE InsightDock::Charts)
 ```
 
 ```cpp

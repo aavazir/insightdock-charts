@@ -40,7 +40,7 @@ enum class PieLegendPosition {
 struct PieOptions {
   double center_x = 0.0;    ///< Pie center X (0 = auto-center in plot).
   double center_y = 0.0;    ///< Pie center Y (0 = auto-center in plot).
-  double radius = 250.0;    ///< Pie radius in pixels.
+  double radius = 0.0;      ///< Pie radius in pixels (0 = auto-fit, reserving margin for labels).
   double gap_degrees = 0.0; ///< Angular gap between slices in degrees.
   bool skip_zero = true;    ///< Omit slices with value ≤ 0.
   /**

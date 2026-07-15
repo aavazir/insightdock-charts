@@ -77,6 +77,12 @@ combo.cartesian_options().custom_y2_formatter = [](double v) {
 The right margin widens automatically to fit the secondary axis's tick labels — no manual layout
 adjustment needed when you enable it.
 
+The primary (left) axis can also be switched to a logarithmic scale via
+`cartesian_options().y_scale_type = ScaleType::Log` (see
+[Bar → Log y-axis](bar.md#log-y-axis)) for series spanning multiple orders of magnitude — the
+secondary (right) axis stays Linear-only in v1, so pair a log-scale primary series with a
+linear-scale secondary one deliberately, not as an oversight.
+
 ## Reference lines and bands
 
 `cartesian_options().reference_lines`/`reference_bands` work here too — drawn at the start of the

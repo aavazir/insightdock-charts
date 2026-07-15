@@ -1,6 +1,11 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) InsightDock contributors
 
+/**
+ * @file combo_chart.h
+ * @brief Combo chart: grouped bars with an optional line overlay on a shared or independent axis.
+ */
+
 #ifndef INSIGHTDOCK_CHARTS_COMBO_CHART_H
 #define INSIGHTDOCK_CHARTS_COMBO_CHART_H
 

@@ -15,14 +15,13 @@ Semantic versioning after 1.0.0.
 - [ ] `NOTICE` and font licenses reviewed
 - [ ] GitHub Actions CI green on `main`
 - [ ] GitHub Pages site + gallery published
-- [ ] Brand clearance complete ([BRAND_CLEARANCE.md](BRAND_CLEARANCE.md))
-- [ ] vcpkg port (optional): `insightdock-charting`
+- [ ] vcpkg port (optional): `insightdock-charts`
 - [ ] Tag: `vX.Y.Z`
 
 ## Tagging
 
 ```bash
-git tag -a v1.0.0 -m "InsightDock Charting Library for C++ v1.0.0"
+git tag -a v1.0.0 -m "InsightDock Charts for C++ v1.0.0"
 git push origin v1.0.0
 ```
 

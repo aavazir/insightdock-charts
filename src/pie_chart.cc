@@ -162,8 +162,11 @@ ImageBuffer PieChart::render() const {
     cy = options_.height / 2.0;
   }
   double radius = pie_opts_.radius;
-  // Auto-fit: if radius is unset or would overflow the image, shrink to fit.
-  // Leave ~35% of the shorter half for callout labels.
+  // Auto-fit: if radius is unset (0, the sentinel — same convention as center_x/
+  // center_y above) or would overflow the image, shrink to fit. Leave ~35% of the
+  // shorter half for callout labels. An explicitly-configured non-zero radius that
+  // already fits the canvas is trusted as-is, even if a near-horizontal slice's
+  // leader line ends up tight on space — that's a caller choice, not a default.
   double max_fit = std::min({cx, static_cast<double>(options_.width) - cx, cy,
                              static_cast<double>(options_.height) - cy}) *
                    0.65;

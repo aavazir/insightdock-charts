@@ -13,11 +13,12 @@
 namespace insightdock::charts {
 
 void AreaChart::draw_series(PlotContext &ctx) const {
-  std::size_t ncat = std::max<std::size_t>(ctx.categories.size(), 1);
+  std::size_t ncat = ctx.continuous_x ? ctx.x_values.size()
+                                       : std::max<std::size_t>(ctx.categories.size(), 1);
   if (ctx.series.empty())
     return;
 
-  float slot = ctx.plot.w / static_cast<float>(ncat);
+  float slot = ctx.continuous_x ? 0.0f : ctx.plot.w / static_cast<float>(ncat);
   float y0 = ctx.y_scale.to_pixel(ctx.y_scale.min());
 
   Font label_font;
@@ -36,7 +37,8 @@ void AreaChart::draw_series(PlotContext &ctx) const {
         double val = (i < ser.values.size()) ? ser.values[i] : 0.0;
         double base = cumulative[i];
         cumulative[i] += val;
-        float px = ctx.plot.left() + slot * (static_cast<float>(i) + 0.5f);
+        float px = ctx.continuous_x ? ctx.x_scale.to_pixel(ctx.x_values[i])
+                                    : ctx.plot.left() + slot * (static_cast<float>(i) + 0.5f);
         top_pts.push_back({px, ctx.y_scale.to_pixel(cumulative[i])});
         bottom_pts.push_back({px, ctx.y_scale.to_pixel(base)});
       }
@@ -87,7 +89,8 @@ void AreaChart::draw_series(PlotContext &ctx) const {
 
     for (std::size_t i = 0; i < ncat; ++i) {
       double val = (i < ser.values.size()) ? ser.values[i] : 0.0;
-      float px = ctx.plot.left() + slot * (static_cast<float>(i) + 0.5f);
+      float px = ctx.continuous_x ? ctx.x_scale.to_pixel(ctx.x_values[i])
+                                  : ctx.plot.left() + slot * (static_cast<float>(i) + 0.5f);
       float py = ctx.y_scale.to_pixel(val);
       pts.push_back({px, py});
     }

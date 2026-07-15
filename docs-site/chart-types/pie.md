@@ -44,7 +44,7 @@ pie.set_pie_options(opts);
 | Option | Default | Purpose |
 |---|---|---|
 | `center_x` / `center_y` | `0` | Pie center in pixels; `0` auto-centers in the plot area. |
-| `radius` | `250.0` | Pie radius in pixels. |
+| `radius` | `0.0` | Pie radius in pixels; `0` = auto-fit to the canvas, reserving margin for labels. |
 | `gap_degrees` | `0.0` | Angular gap between slices, in degrees. |
 | `skip_zero` | `true` | Omit slices with value ≤ 0. |
 | `palette` | `PaletteKind::Tableau10` | Color cycle used for slices added without an explicit color. |

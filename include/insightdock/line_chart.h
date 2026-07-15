@@ -54,6 +54,9 @@ public:
 protected:
   void draw_series(PlotContext &ctx) const override;
   void draw_overlay(PlotContext &ctx) const override;
+  bool supports_continuous_x_axis() const override {
+    return true;
+  }
 
 private:
   LineChartOptions line_opts_;

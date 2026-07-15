@@ -33,6 +33,6 @@ cmake -B build \
   -DINSIGHTDOCK_BUILD_EXAMPLES=ON \
   -DINSIGHTDOCK_BUILD_TESTS=OFF \
   -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
-cmake --build build -j"$(nproc)" --target InsightDockCharting
+cmake --build build -j"$(nproc)" --target InsightDockCharts
 cd docs && mrdocs mrdocs.yml
 test -f reference/index.html

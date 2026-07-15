@@ -55,18 +55,29 @@ see [Bar → Reference lines and bands](bar.md#reference-lines-and-bands).
 
 ## Dense / time-series data
 
-For a line with many data points (daily data over months, for example), two tools keep the chart
-readable without changing the underlying data:
+For a line with many data points (daily data over months, for example), three tools keep the
+chart readable without changing the underlying data:
 
 - **`lttb_decimate_indexed()`** (`insightdock/decimate.h`) reduces point count before rendering,
   preserving the visual shape (peaks/valleys) using the largest-triangle-three-buckets algorithm.
-- **`CartesianOptions::max_x_labels`** caps the number of x-axis category labels shown, regardless
-  of chart width.
+- **`set_x_values()` + `cartesian_options().x_scale_type = ScaleType::DateTime`** positions each
+  point by its real Unix timestamp instead of an evenly-spaced category slot — irregular gaps in
+  the data render as irregular pixel spacing, and axis ticks are generated and formatted
+  automatically from the numeric domain. See
+  [Bar → Continuous DateTime x-axis](bar.md#continuous-datetime-x-axis) for the full explanation
+  (only `LineChart`/`AreaChart` support it).
+- **`CartesianOptions::max_x_labels`** caps the number of x-axis ticks/labels shown, regardless of
+  chart width — works the same way in both category mode and continuous `DateTime` mode.
 
 ```cpp
-auto decimated = lttb_decimate_indexed(daily_values, /*target_points=*/25);
-line.set_categories(decimated_labels);
-line.add_series("Bandwidth", decimated.values);
+auto [decimated_values, decimated_indices] = lttb_decimate_indexed(daily_values, /*target_points=*/25);
+std::vector<double> decimated_timestamps;
+for (std::size_t i : decimated_indices)
+  decimated_timestamps.push_back(daily_timestamps[i]);
+
+line.set_x_values(decimated_timestamps);
+line.add_series("Bandwidth", decimated_values);
+line.cartesian_options().x_scale_type = ScaleType::DateTime;
 line.cartesian_options().max_x_labels = 12;   // ~12 readable date labels
 ```
 

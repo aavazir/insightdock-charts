@@ -2,7 +2,7 @@
 # Primary generator: MrDocs (see docs/DOCUMENTATION.md and docs/mrdocs.yml).
 # Run from repo root: doxygen docs/doxygen/Doxyfile
 
-PROJECT_NAME           = "InsightDock Charting Library for C++"
+PROJECT_NAME           = "InsightDock Charts for C++"
 PROJECT_NUMBER         = 0.6.0
 PROJECT_BRIEF          = "MIT-licensed C++ charting engine"
 OUTPUT_DIRECTORY       = docs/doxygen/html

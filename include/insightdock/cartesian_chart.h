@@ -78,6 +78,26 @@ struct CartesianOptions {
   std::string y_axis_label;  ///< Label beside the y-axis (optional).
   bool begin_at_zero = true; ///< Force y-axis minimum to 0 when data are non-negative.
 
+  /**
+   * @brief Primary (left) y-axis interpolation mode: @ref ScaleType::Linear (default) or
+   * @ref ScaleType::Log. @ref ScaleType::DateTime is not meaningful for a value axis.
+   * Log scale clamps non-positive data to a small positive floor (see @ref Scale::log_nice) —
+   * suited to network traffic, latency, or financial data spanning multiple orders of magnitude.
+   * @ref CartesianOptions::begin_at_zero is ignored when this is Log (a log domain can't
+   * include zero). The secondary (right) y-axis is Linear-only in v1.
+   */
+  ScaleType y_scale_type = ScaleType::Linear;
+
+  /**
+   * @brief X-axis interpolation mode: @ref ScaleType::Linear (default, evenly-spaced
+   * categories) or @ref ScaleType::DateTime (continuous domain positioned by real value,
+   * via @ref CartesianChart::set_x_values). Only honored by chart types that override
+   * @ref CartesianChart::supports_continuous_x_axis (LineChart, AreaChart) — ignored
+   * (falls back to category mode) on BarChart/ComboChart, whose fixed-width bar-per-category
+   * layout doesn't have a well-defined meaning for irregularly-spaced continuous positions.
+   */
+  ScaleType x_scale_type = ScaleType::Linear;
+
   /** @brief Built-in tick label format (used when @p custom_y_formatter is null). */
   TickFormat y_tick_format = TickFormat::Raw;
 
@@ -162,15 +182,31 @@ public:
   struct PlotContext {
     ImageBuffer &buffer;               ///< Target pixel buffer.
     Rect plot;                         ///< Plot area rectangle (excluding margins).
-    Scale x_scale;                     ///< Category index → pixel.
+    Scale x_scale;                     ///< Category index, or continuous value, → pixel.
     Scale y_scale;                     ///< Data value → pixel (primary, left axis).
     Scale y_scale2;                    ///< Data value → pixel (secondary, right axis).
     bool has_y2 = false;               ///< Whether @ref y_scale2 is active for this render.
+    /**
+     * Whether @ref x_scale maps a continuous numeric domain (from @ref x_values) rather
+     * than category index — true only when the concrete chart type opted in via
+     * @ref CartesianChart::supports_continuous_x_axis and @ref CartesianOptions::x_scale_type
+     * is @ref ScaleType::DateTime with non-empty @ref x_values. See @ref set_x_values.
+     */
+    bool continuous_x = false;
+    /**
+     * Whether the plot is laid out with a horizontal value axis (bottom) and a vertical
+     * category axis (left) instead of the default vertical value axis (left) / horizontal
+     * category axis (bottom). Only BarChart opts in via @ref CartesianChart::is_horizontal.
+     * When true, @ref y_scale's pixel range spans the plot's horizontal extent (left→right)
+     * rather than vertical — it still represents the "value" axis, just rotated.
+     */
+    bool horizontal = false;
     Font const &font;                  ///< Font for labels.
     ChartOptions const &opts;          ///< Common chart options.
     CartesianOptions const &cart_opts; ///< Axis options.
     std::vector<std::string> const &categories;
     std::vector<DataSeries> const &series;
+    std::vector<double> const &x_values; ///< Populated only when @ref continuous_x is true.
   };
 
   /** @brief Mutable Cartesian options. */
@@ -189,6 +225,24 @@ public:
   /** @brief Category labels. */
   std::vector<std::string> const &categories() const {
     return categories_;
+  }
+
+  /**
+   * @brief Set per-point numeric x-values (e.g. Unix timestamps) for continuous x-axis
+   * positioning, in place of evenly-spaced categories.
+   *
+   * Only takes effect when @ref CartesianOptions::x_scale_type is @ref ScaleType::DateTime
+   * *and* the concrete chart type overrides @ref supports_continuous_x_axis to return true
+   * (LineChart, AreaChart) — series values are then paired with these by index instead of
+   * with @ref categories(). Ignored otherwise (falls back to category-slot positioning).
+   * Must be strictly non-decreasing and the same length as each series' values.
+   */
+  void set_x_values(std::vector<double> values) {
+    x_values_ = std::move(values);
+  }
+  /** @brief Numeric x-values set via @ref set_x_values, if any. */
+  std::vector<double> const &x_values() const {
+    return x_values_;
   }
 
   /**
@@ -250,6 +304,30 @@ protected:
   virtual bool has_secondary_y_axis() const {
     return false;
   }
+  /**
+   * @brief Whether this chart type can position its x-axis by continuous numeric value
+   * (via @ref set_x_values / @ref CartesianOptions::x_scale_type) instead of evenly-spaced
+   * categories. Default: false. Overridden by LineChart and AreaChart, whose point-based
+   * geometry has a well-defined continuous position; not by BarChart/ComboChart, whose
+   * fixed-width bar-per-category layout does not.
+   */
+  virtual bool supports_continuous_x_axis() const {
+    return false;
+  }
+
+  /**
+   * @brief Whether to lay out the plot with a horizontal value axis (bottom) and a
+   * vertical category axis (left), instead of the default vertical value axis (left)
+   * / horizontal category axis (bottom). Default: false. Overridden by BarChart based
+   * on @ref BarOptions::orientation; not meaningful for Line/Area/Combo's point-based
+   * geometry, so they don't override it. @ref ReferenceLine / @ref ReferenceBand overlays
+   * are not supported in horizontal mode (v1) since their orientation semantics assume
+   * a vertical value axis.
+   */
+  virtual bool is_horizontal() const {
+    return false;
+  }
+
   /** @brief Minimum value for the secondary y-axis domain. */
   virtual double compute_y2_min() const {
     return 0.0;
@@ -268,6 +346,7 @@ protected:
 
   std::vector<std::string> categories_;
   std::vector<DataSeries> series_;
+  std::vector<double> x_values_;
   CartesianOptions cartesian_;
 };
 

@@ -31,7 +31,7 @@ jobs:
             -DINSIGHTDOCK_WERROR=OFF \
             -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
       - name: Build core library
-        run: cmake --build build-tidy -j"$(nproc)" --target InsightDockCharting
+        run: cmake --build build-tidy -j"$(nproc)" --target InsightDockCharts
       - name: clang-tidy
         run: |
           status=0

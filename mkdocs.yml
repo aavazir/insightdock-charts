@@ -1,4 +1,4 @@
-site_name: InsightDock Charting Library for C++
+site_name: InsightDock Charts for C++
 site_description: Headless C++17 charting for PNG/JPEG/SVG/PDF reports — MIT licensed.
 
 docs_dir: docs-site

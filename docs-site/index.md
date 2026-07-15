@@ -1,4 +1,4 @@
-# InsightDock Charting Library for C++
+# InsightDock Charts for C++
 
 > An MIT-licensed C++ charting engine for developers who need high-quality charts in reports and applications, with vector PDF output and an extensible architecture from day one.
 

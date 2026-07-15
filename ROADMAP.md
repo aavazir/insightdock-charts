@@ -1,6 +1,6 @@
 # InsightDock ROADMAP
 
-Living document for InsightDock Charting Library for C++.
+Living document for InsightDock Charts for C++.
 
 **Priority order:** fix architectural foundations → reach minimum viable public library → OSS launch on GitHub → chart breadth → finance depth → interactivity and ecosystem.
 
@@ -14,18 +14,6 @@ Contributions for new chart types are welcome once Phase 0.5 foundations are in 
 
 Found during work on other features; not yet fixed. Pick these up opportunistically or dedicate
 a pass to them — listed here so they don't get lost between sessions.
-
-- **Embedded font's `$` glyph doesn't render** — `Font::draw_text(img, x, y, "$1,234", ...)` draws
-  a blank space where `$` should be, even though the codepoint (`0x24` / decimal `36`) is within
-  the embedded font's declared ASCII range (32–127, checked in `src/font.cc`). Reproduced with a
-  minimal standalone repro (`Font` default-constructed, `"$1,234"` at size 20 → renders as `1,234`
-  with a leading gap, no `$` glyph). Not a range-check bug — the range guard passes and something
-  further down (likely the embedded TTF subset baked into `include/insightdock/embedded_font.h`,
-  or `stbtt_` glyph lookup for that specific codepoint) is silently producing an empty glyph.
-  Found 2026-07-02 while writing `examples/bar_polish_example.cc` (title used `"$M"`; worked around
-  by rewording to avoid `$` rather than fixing the font). Worth checking whether other punctuation
-  in the embedded subset has the same problem before assuming it's `$`-specific. Files to start
-  with: `src/font.cc`, `include/insightdock/embedded_font.h`, `third_party/stb_truetype.h`.
 
 - **Chart.js/amCharts visual-polish features (2026-07-02) don't reach vector PDF/SVG output** —
   rounded bars, dashed lines, spline curves, marker shapes, data labels, reference lines, and the
@@ -73,11 +61,15 @@ Everything here is an architectural prerequisite. Skipping it means every future
 - [x] `ChartTheme::light()` and `ChartTheme::dark()` built-in presets
 - [x] Per-chart `ChartOptions` fields still take precedence after `apply_theme`
 
-### Scale architecture upgrade ✓ (API shape)
+### Scale architecture upgrade ✓
 - [x] `ScaleType` enum (`Linear`, `Log`, `DateTime`) added to `scale.h`
 - [x] `Scale::set_type()` / `Scale::type()` accessor
-- [x] Log scale implementation — needed before log-axis charts land
-- [x] DateTime scale implementation — needed before time-series charts land
+- [x] Log scale implementation, including `Scale::log_nice()` nice-domain factory
+- [x] DateTime scale implementation
+- [x] Wired into charts (not just the `Scale` primitive) — `CartesianOptions::y_scale_type`
+  (Log, on Bar/Line/Area/Combo) and `x_scale_type` + `set_x_values()` (DateTime, continuous
+  positioning on Line/Area). Previously checked off here based on the primitive alone while
+  no chart type actually exposed either mode — see `CHANGELOG.md` [Unreleased].
 
 ### Axis tick formatting ✓
 - [x] `TickFormat` enum (`Raw`, `SI`, `Currency`, `Percent`) in `cartesian_chart.h`
@@ -207,6 +199,14 @@ Requested to close the gap between InsightDock's plain default styling and what 
 - [ ] Per-series (rather than chart-wide) dash pattern / marker shape — would need new fields on the shared `DataSeries` struct; deferred, see `CHANGELOG.md`
 - [ ] Native vector PDF/SVG support for the new bar/line polish (rounding, dash, spline, markers, labels) — only pie has vector export today; tracked as the existing "Native vector PDF for bar and line charts" / "Native SVG paths for bar and line" items above
 
+### Axis and orientation completeness ✓
+Identified during a v1-scope audit of the existing chart types against commonly-expected charting-library features (2026-07-15) — see `CHANGELOG.md` [Unreleased] for full detail.
+- [x] Log y-axis wired into Bar/Line/Area/Combo (`CartesianOptions::y_scale_type`)
+- [x] Continuous DateTime x-axis wired into Line/Area (`CartesianOptions::x_scale_type` + `set_x_values()`)
+- [x] Horizontal bar orientation (`BarOptions::orientation`) — rankings/leaderboards, long category names
+- [ ] Horizontal orientation on ComboChart — not attempted; line-series geometry has no horizontal equivalent
+- [ ] `ReferenceLine`/`ReferenceBand` support in horizontal bar mode — orientation semantics assume a vertical value axis; explicitly out of scope for v1, silently skipped rather than rendered wrong
+
 ---
 
 ## Phase 0.7 — OSS launch gate (GitHub)
@@ -214,14 +214,14 @@ Requested to close the gap between InsightDock's plain default styling and what 
 Do not publish to GitHub until every item here is checked. This is the public first-impression checklist.
 
 - [x] Company-internal code and CI (`fuse/`, GitLab CI) removed entirely from the repo
-- [ ] GitHub org/repo reserved (`InsightDock/insightdock-charting-cpp` or agreed name)
+- [ ] GitHub org/repo reserved (`InsightDock/insightdock-charts-cpp` or agreed name)
 - [x] GitHub Actions CI (build, test, sanitizers, clang-tidy, MrDocs) — `.github/workflows/ci.yml`, `.github/workflows/docs.yml`
-- [ ] vcpkg port submitted (`insightdock-charting`) — primary Windows and CMake install path
-- [ ] `pkg-config` `.pc` file installed by `cmake --install` — for Meson and plain-Makefile consumers
+- [ ] vcpkg port submitted (`insightdock-charts`) — primary Windows and CMake install path
+- [x] `pkg-config` `.pc` file installed by `cmake --install` — `cmake/insightdock.pc.in`, installed to `lib/pkgconfig/insightdock.pc`
 - [ ] `CHANGELOG.md` placeholder URLs replaced with real GitHub URLs
-- [ ] Brand clearance confirmed ([BRAND_CLEARANCE.md](docs/BRAND_CLEARANCE.md))
 - [ ] Public MkDocs Material site deployed to GitHub Pages (quick start, gallery, comparison) — workflow in place (`.github/workflows/docs.yml`), unverified until the repo exists on GitHub
-- [ ] `find_package(InsightDock)` tested end-to-end from a fresh install in CI
+- [x] `find_package(InsightDock)` tested end-to-end from a fresh install — manual verification (clean `cmake --install` to a temp prefix + a throwaway consumer `CMakeLists.txt` doing `find_package(InsightDock CONFIG REQUIRED)`); caught and fixed a real bug where the exported target was `InsightDock::InsightDockCharts` instead of `InsightDock::Charts` (missing `EXPORT_NAME` property). Not yet automated in CI.
+- [x] OpenWrt packaging sample — `packaging/openwrt/Makefile`, a standard `package.mk`-based feed package wired to the upstream Makefile's `CHART_TYPES`/`EXPORT_FORMATS`/`FONT_MODE` knobs
 
 ---
 

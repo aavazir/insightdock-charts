@@ -182,18 +182,12 @@ int main(int argc, char **argv) {
   check_chart("bubble_chart.png", bubble, ref_dir, update);
 
   {
-    std::vector<std::string> dates = {
-        "22/03", "23/03", "24/03", "25/03", "26/03", "27/03", "28/03", "29/03", "30/03", "31/03",
-        "01/04", "02/04", "03/04", "04/04", "05/04", "06/04", "07/04", "08/04", "09/04", "10/04",
-        "11/04", "12/04", "13/04", "14/04", "15/04", "16/04", "17/04", "18/04", "19/04", "20/04",
-        "21/04", "22/04", "23/04", "24/04", "25/04", "26/04", "27/04", "28/04", "29/04", "30/04",
-        "01/05", "02/05", "03/05", "04/05", "05/05", "06/05", "07/05", "08/05", "09/05", "10/05",
-        "11/05", "12/05", "13/05", "14/05", "15/05", "16/05", "17/05", "18/05", "19/05", "20/05",
-        "21/05", "22/05", "23/05", "24/05", "25/05", "26/05", "27/05", "28/05", "29/05", "30/05",
-        "31/05", "01/06", "02/06", "03/06", "04/06", "05/06", "06/06", "07/06", "08/06", "09/06",
-        "10/06", "11/06", "12/06", "13/06", "14/06", "15/06", "16/06", "17/06", "18/06", "19/06",
-        "20/06", "21/06", "22/06", "23/06", "24/06", "25/06", "26/06", "27/06", "28/06", "29/06",
-    };
+    double const day = 86400.0;
+    double const start_ts = 1774137600.0; // 2026-03-22 00:00:00 UTC
+    std::vector<double> timestamps;
+    timestamps.reserve(100);
+    for (int i = 0; i < 100; ++i)
+      timestamps.push_back(start_ts + static_cast<double>(i) * day);
     std::vector<double> data_gb = {
         15.87, 22.43, 16.27, 44.91, 11.01, 50.26, 59.18, 14.17, 57.10, 13.75, 48.10, 54.36, 39.50,
         13.09, 43.36, 65.06, 53.91, 55.09, 31.87, 56.41, 16.64, 64.69, 14.76, 49.52, 24.28, 21.49,
@@ -205,19 +199,20 @@ int main(int argc, char **argv) {
         16.82, 51.42, 9.19,  64.54, 41.83, 42.41, 44.13, 41.73, 12.67,
     };
     auto [dec_values, dec_indices] = insightdock::charts::lttb_decimate_indexed(data_gb, 25);
-    std::vector<std::string> dec_dates;
+    std::vector<double> dec_timestamps;
     for (std::size_t i : dec_indices)
-      dec_dates.push_back(dates[i]);
+      dec_timestamps.push_back(timestamps[i]);
 
     insightdock::charts::LineChart ts;
     ts.options().width = 1200;
     ts.options().height = 500;
     ts.options().title = "Data Consumption Trend (100 Days)";
     ts.options().legend.position = insightdock::charts::LegendOptions::Position::Bottom;
-    ts.set_categories(dec_dates);
+    ts.set_x_values(dec_timestamps);
     ts.add_series("Data Consumed", dec_values);
-    ts.cartesian_options().x_axis_label = "Date (DD/MM)";
+    ts.cartesian_options().x_axis_label = "Date";
     ts.cartesian_options().y_axis_label = "Data Consumed (GB)";
+    ts.cartesian_options().x_scale_type = insightdock::charts::ScaleType::DateTime;
     ts.cartesian_options().max_x_labels = 12;
     ts.cartesian_options().begin_at_zero = true;
     ts.line_options().show_points = true;

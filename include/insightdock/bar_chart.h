@@ -21,9 +21,20 @@ enum class BarMode {
   Stacked  ///< Bars stacked vertically per category.
 };
 
+/** @brief Bar direction. */
+enum class BarOrientation {
+  Vertical,  ///< Bars rise from a horizontal category axis (default).
+  Horizontal ///< Bars extend from a vertical category axis on the left — rankings,
+             ///< leaderboards, long category names. Not available on ComboChart, whose
+             ///< line-series geometry has no horizontal-orientation equivalent; also
+             ///< doesn't support @ref ReferenceLine / @ref ReferenceBand overlays in v1
+             ///< (their orientation semantics assume a vertical value axis).
+};
+
 /** @brief Layout, shape, and label options for BarChart (and reused by ComboChart's bars). */
 struct BarOptions {
   BarMode mode = BarMode::Grouped;
+  BarOrientation orientation = BarOrientation::Vertical;
   /** Gap between category groups as a fraction of slot width, in [0, 0.5]. */
   float group_gap = 0.2f;
   /** Gap between bars within a group (grouped mode only), in [0, 0.5]. */
@@ -83,14 +94,28 @@ public:
     bar_opts_.bar_gap = gap;
   }
 
+  /** @brief Set vertical (default) or horizontal bar direction. */
+  void set_orientation(BarOrientation orientation) {
+    bar_opts_.orientation = orientation;
+  }
+  /** @brief Current bar direction. */
+  BarOrientation orientation() const {
+    return bar_opts_.orientation;
+  }
+
 protected:
   void draw_series(PlotContext &ctx) const override;
   void draw_overlay(PlotContext &ctx) const override;
   double compute_y_max() const override;
+  bool is_horizontal() const override {
+    return bar_opts_.orientation == BarOrientation::Horizontal;
+  }
 
 private:
   void draw_grouped(PlotContext &ctx) const;
   void draw_stacked(PlotContext &ctx) const;
+  void draw_grouped_horizontal(PlotContext &ctx) const;
+  void draw_stacked_horizontal(PlotContext &ctx) const;
 
   BarOptions bar_opts_;
 };

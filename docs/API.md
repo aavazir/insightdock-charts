@@ -1,6 +1,6 @@
 # Public API
 
-InsightDock Charting Library for C++ exposes a small, easy-to-use surface. Include one header for most tasks:
+InsightDock Charts for C++ exposes a small, easy-to-use surface. Include one header for most tasks:
 
 ```cpp
 #include "insightdock/charts.h"
@@ -162,7 +162,7 @@ steps for adding a brand-new chart type, see the site's Concepts guide (`docs-si
 
 ```cmake
 find_package(InsightDock CONFIG REQUIRED)
-target_link_libraries(app PRIVATE InsightDock::Charting)
+target_link_libraries(app PRIVATE InsightDock::Charts)
 ```
 
 Compile definition `INSIGHTDOCK_HAS_PODOFO=1` when PDF support is linked.

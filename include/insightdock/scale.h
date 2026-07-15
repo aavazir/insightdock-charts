@@ -92,6 +92,20 @@ public:
   static Scale linear_nice(double data_min, double data_max, float pixel_min, float pixel_max,
                            int max_ticks = 8);
 
+  /**
+   * @brief Build a @ref ScaleType::Log scale with a "nice" (power-of-10 / 1-2-5 mantissa)
+   * domain and tick set, mirroring @ref linear_nice for logarithmic axes.
+   * @param data_min  Smallest data value; values <= 0 are clamped to a small positive floor,
+   *                  since a logarithmic domain cannot include zero or negative numbers.
+   * @param data_max  Largest data value.
+   * @param pixel_min Pixel for domain min.
+   * @param pixel_max Pixel for domain max.
+   * @param max_ticks Maximum tick count hint.
+   * @return Configured @ref ScaleType::Log scale with expanded nice domain.
+   */
+  static Scale log_nice(double data_min, double data_max, float pixel_min, float pixel_max,
+                        int max_ticks = 8);
+
   /** @brief Set the interpolation mode (default: Linear). */
   void set_type(ScaleType type) {
     type_ = type;

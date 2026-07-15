@@ -1,8 +1,6 @@
-# InsightDock Charting Library for C++
+# InsightDock Charts for C++
 
-[![CI](https://github.com/InsightDock/insightdock-charting-cpp/actions/workflows/ci.yml/badge.svg)](https://github.com/InsightDock/insightdock-charting-cpp/actions/workflows/ci.yml)
-
-<!-- Placeholder org/repo until the GitHub org is reserved — see docs/BRAND_CLEARANCE.md. -->
+[![CI](https://github.com/InsightDock/insightdock-charts-cpp/actions/workflows/ci.yml/badge.svg)](https://github.com/InsightDock/insightdock-charts-cpp/actions/workflows/ci.yml)
 
 > InsightDock is an MIT-licensed C++ charting engine for developers who need high-quality charts in reports and applications, with vector PDF output and an extensible architecture from day one.
 
@@ -10,7 +8,8 @@ Production-oriented C++17 charting for PDF reports, PNG/JPEG export, and embedde
 
 ## Features
 
-- **Chart types:** pie, vertical bar (grouped / stacked), multi-series line (optional area fill), area (stacked), combo (bar + line), scatter and bubble
+- **Chart types:** pie, bar (grouped / stacked, vertical or horizontal), multi-series line (optional area fill), area (stacked), combo (bar + line), scatter and bubble
+- **Axes:** linear, logarithmic (Bar/Line/Area/Combo y-axis), and continuous DateTime x-axis positioned by real timestamp (Line/Area)
 - **Easy export:** one API — `ChartExporter::save(chart, "output.png")` for PNG, JPEG, SVG, and PDF
 - **Output:** RGBA `ImageBuffer`, PNG/JPEG, SVG (raster embed everywhere; native **vector paths for pie**), PDF raster embed, native **vector PDF pies**
 - **Styling:** Chart.js / AmCharts 12-color palette, Tableau-10 palette (pie), axes, grid, legend, title
@@ -119,6 +118,10 @@ Cross-compile (full build):
 make CXX=mips-openwrt-linux-musl-g++ AR=mips-openwrt-linux-musl-gcc-ar
 ```
 
+Packaging this into an OpenWrt feed: [packaging/openwrt/](packaging/openwrt/) has a standard
+`package.mk`-based feed `Makefile` sample wired to these same `CHART_TYPES`/`EXPORT_FORMATS`/
+`FONT_MODE` knobs.
+
 ### CMake (recommended)
 
 ```bash
@@ -164,12 +167,24 @@ cmake --install build --prefix /opt/insightdock
 
 ```cmake
 find_package(InsightDock CONFIG REQUIRED)
-target_link_libraries(myapp PRIVATE InsightDock::Charting)
+target_link_libraries(myapp PRIVATE InsightDock::Charts)
 ```
 
 ```cpp
 #include "insightdock/charts.h"
 ```
+
+A `pkg-config` file (`insightdock.pc`) is also installed to `lib/pkgconfig/`, for Meson or
+plain-Makefile consumers:
+
+```bash
+export PKG_CONFIG_PATH="/opt/insightdock/lib/pkgconfig:${PKG_CONFIG_PATH}"
+g++ -std=c++17 $(pkg-config --cflags --libs insightdock) myapp.cc -o myapp
+```
+
+Note: pass `-DCMAKE_INSTALL_PREFIX=/opt/insightdock` at the `cmake -B build` configure step (not
+just `cmake --install build --prefix ...`) so the generated `.pc` file's paths match where the
+library actually ends up — `configure_file()` bakes `CMAKE_INSTALL_PREFIX` at configure time.
 
 ## Platform support
 

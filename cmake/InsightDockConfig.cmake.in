@@ -1,5 +1,5 @@
 @PACKAGE_INIT@
 
-include("${CMAKE_CURRENT_LIST_DIR}/InsightDockChartingTargets.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/InsightDockChartsTargets.cmake")
 
-check_required_components(InsightDockCharting)
+check_required_components(InsightDockCharts)

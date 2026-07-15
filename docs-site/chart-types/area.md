@@ -51,3 +51,7 @@ label density) works exactly as documented in
 [Bar → Shared CartesianOptions](bar.md#shared-cartesianoptions), and
 `reference_lines`/`reference_bands` work as documented in
 [Bar → Reference lines and bands](bar.md#reference-lines-and-bands).
+
+Like `LineChart`, `AreaChart` also supports a logarithmic y-axis
+([Bar → Log y-axis](bar.md#log-y-axis)) and a continuous DateTime x-axis positioned by real
+timestamp via `set_x_values()` ([Bar → Continuous DateTime x-axis](bar.md#continuous-datetime-x-axis)).
