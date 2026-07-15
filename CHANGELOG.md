@@ -146,5 +146,5 @@ Format based on [Keep a Changelog](https://keepachangelog.com/). Versioning foll
 
 - Captive Portal PDF example, vector PoDoFo pies, Tableau-10 palette
 
-[0.7.0]: https://github.com/InsightDock/insightdock-charts-cpp/releases/tag/v0.7.0
-[0.6.0]: https://github.com/InsightDock/insightdock-charts-cpp/releases/tag/v0.6.0
+[0.7.0]: https://github.com/avazir/insightdock/releases/tag/v0.7.0
+[0.6.0]: https://github.com/avazir/insightdock/releases/tag/v0.6.0

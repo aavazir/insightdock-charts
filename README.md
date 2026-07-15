@@ -1,6 +1,6 @@
 # InsightDock Charts for C++
 
-[![CI](https://github.com/InsightDock/insightdock-charts-cpp/actions/workflows/ci.yml/badge.svg)](https://github.com/InsightDock/insightdock-charts-cpp/actions/workflows/ci.yml)
+[![CI](https://github.com/avazir/insightdock/actions/workflows/ci.yml/badge.svg)](https://github.com/avazir/insightdock/actions/workflows/ci.yml)
 
 > InsightDock is an MIT-licensed C++ charting engine for developers who need high-quality charts in reports and applications, with vector PDF output and an extensible architecture from day one.
 

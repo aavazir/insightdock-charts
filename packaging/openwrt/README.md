@@ -10,7 +10,7 @@ your own feed.
 ```bash
 # in your OpenWrt buildroot / feed checkout
 mkdir -p package/libs/insightdock
-cp /path/to/insightdock-charts-cpp/packaging/openwrt/Makefile package/libs/insightdock/Makefile
+cp /path/to/insightdock/packaging/openwrt/Makefile package/libs/insightdock/Makefile
 ```
 
 Then edit the copy:

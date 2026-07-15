@@ -5,7 +5,7 @@ includedir=@CMAKE_INSTALL_FULL_INCLUDEDIR@
 
 Name: InsightDock
 Description: MIT-licensed C++17 charting library (pie, bar, line, area, combo, scatter/bubble; PNG/JPEG/SVG/PDF export)
-URL: https://github.com/InsightDock/insightdock-charts-cpp
+URL: https://github.com/avazir/insightdock
 Version: @PROJECT_VERSION@
 Libs: -L${libdir} -linsightdock
 Cflags: -I${includedir} -std=c++17
