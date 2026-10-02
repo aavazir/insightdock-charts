@@ -13,6 +13,7 @@
 #define INSIGHTDOCK_CHARTS_IMAGE_BUFFER_H
 
 #include "insightdock/color.h"
+#include "insightdock/export_macros.h"
 #include <cstddef>
 #include <cstdint>
 #include <utility>
@@ -25,7 +26,7 @@ namespace insightdock::charts {
  *
  * Each pixel is four bytes: R, G, B, A. Origin (0,0) is top-left.
  */
-class ImageBuffer {
+class INSIGHTDOCK_API ImageBuffer {
 public:
   /** @brief Empty buffer (0×0). */
   ImageBuffer();

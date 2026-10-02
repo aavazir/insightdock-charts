@@ -11,6 +11,7 @@
 
 #include "insightdock/cartesian_chart.h"
 #include "insightdock/chart_style.h"
+#include "insightdock/export_macros.h"
 
 namespace insightdock::charts {
 
@@ -41,7 +42,7 @@ struct LineChartOptions {
  * ChartExporter::save(line, "line.png");
  * @endcode
  */
-class LineChart : public CartesianChart {
+class INSIGHTDOCK_API LineChart : public CartesianChart {
 public:
   std::unique_ptr<Chart> clone() const override {
     return std::make_unique<LineChart>(*this);

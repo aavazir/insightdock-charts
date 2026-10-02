@@ -9,6 +9,7 @@
 #ifndef INSIGHTDOCK_CHARTS_DECIMATE_H
 #define INSIGHTDOCK_CHARTS_DECIMATE_H
 
+#include "insightdock/export_macros.h"
 #include <cstddef>
 #include <utility>
 #include <vector>
@@ -34,8 +35,8 @@ struct DecimationPoint {
  *                  when @p threshold is 0, < 3, or >= `points.size()`.
  * @return Decimated series.
  */
-std::vector<DecimationPoint> lttb_decimate(std::vector<DecimationPoint> const &points,
-                                           std::size_t threshold);
+INSIGHTDOCK_API std::vector<DecimationPoint>
+lttb_decimate(std::vector<DecimationPoint> const &points, std::size_t threshold);
 
 /**
  * @brief Convenience overload for category-aligned data (x = index).
@@ -49,7 +50,7 @@ std::vector<DecimationPoint> lttb_decimate(std::vector<DecimationPoint> const &p
  * @param threshold Target point count; see @ref lttb_decimate for no-op rules.
  * @return Pair of (decimated values, original indices), same length.
  */
-std::pair<std::vector<double>, std::vector<std::size_t>>
+INSIGHTDOCK_API std::pair<std::vector<double>, std::vector<std::size_t>>
 lttb_decimate_indexed(std::vector<double> const &values, std::size_t threshold);
 
 } // namespace insightdock::charts

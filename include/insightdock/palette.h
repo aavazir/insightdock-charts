@@ -10,6 +10,7 @@
 #define INSIGHTDOCK_CHARTS_PALETTE_H
 
 #include "insightdock/color.h"
+#include "insightdock/export_macros.h"
 #include <cstddef>
 
 namespace insightdock::charts {
@@ -24,20 +25,20 @@ enum class PaletteKind {
  * @brief Color from the default 12-color Chart.js palette.
  * @param index Series or slice index (wraps modulo 12).
  */
-Color palette_color(std::size_t index);
+INSIGHTDOCK_API Color palette_color(std::size_t index);
 
 /**
  * @brief Color from the Tableau 10 palette.
  * @param index Index (wraps modulo 10).
  */
-Color tableau10_color(std::size_t index);
+INSIGHTDOCK_API Color tableau10_color(std::size_t index);
 
 /**
  * @brief Color from a specific palette kind.
  * @param kind  Palette to use.
  * @param index Color index (wraps per palette size).
  */
-Color palette_color_by_kind(PaletteKind kind, std::size_t index);
+INSIGHTDOCK_API Color palette_color_by_kind(PaletteKind kind, std::size_t index);
 
 /** @brief Number of colors in the Chart.js palette. */
 constexpr std::size_t palette_size() {

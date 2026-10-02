@@ -36,7 +36,15 @@ std::string ext_lower(std::string const &path) {
   return ext;
 }
 
+// File/byte output: vector PDF is chosen by the format, or by the Vector backend for a PDF target.
+// A Vector pdf_backend on a PNG/JPEG/SVG export is meaningless and must not turn it into a PDF.
 bool use_pdf_vector(ExportOptions const &opts) {
+  return opts.format == OutputFormat::PdfVector ||
+         (opts.format == OutputFormat::PdfRaster && opts.pdf_backend == PdfBackend::Vector);
+}
+
+// Embedding into an existing PdfPainter (draw_pdf) has no output format; only the backend counts.
+[[maybe_unused]] bool use_pdf_vector_embed(ExportOptions const &opts) {
   return opts.format == OutputFormat::PdfVector || opts.pdf_backend == PdfBackend::Vector;
 }
 
@@ -353,9 +361,10 @@ ChartResult<void> ChartExporter::save(Chart &chart, std::string const &path, Exp
     opts.format = OutputFormat::Jpeg;
   else if (ext == "svg")
     opts.format = OutputFormat::Svg;
-  else if (ext == "pdf")
-    opts.format = OutputFormat::PdfRaster;
-  else if (ext == "png")
+  else if (ext == "pdf") {
+    if (opts.format != OutputFormat::PdfVector)
+      opts.format = OutputFormat::PdfRaster;
+  } else if (ext == "png")
     opts.format = OutputFormat::Png;
 
 #ifdef INSIGHTDOCK_HAS_PODOFO
@@ -419,7 +428,7 @@ void ChartExporter::draw_pdf_vector(PoDoFo::PdfDocument &doc, PoDoFo::PdfPainter
 void ChartExporter::draw_pdf(PoDoFo::PdfDocument &doc, PoDoFo::PdfPainter &painter,
                              Chart const &chart, double x, double y, double w, double h,
                              ExportOptions const &opts) {
-  if (use_pdf_vector(opts)) {
+  if (use_pdf_vector_embed(opts)) {
     draw_pdf_vector(doc, painter, chart, x, y, w, h, opts);
     return;
   }

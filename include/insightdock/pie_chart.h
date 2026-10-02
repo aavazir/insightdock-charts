@@ -12,6 +12,7 @@
 #include "insightdock/chart.h"
 #include "insightdock/chart_style.h"
 #include "insightdock/color.h"
+#include "insightdock/export_macros.h"
 #include "insightdock/palette.h"
 #include <string>
 #include <vector>
@@ -81,7 +82,7 @@ struct PieOptions {
  * For vector PDF output, use @ref ChartExporter with @ref PdfBackend::Vector or
  * @ref insightdock::charts::podofo::draw_pie.
  */
-class PieChart : public Chart {
+class INSIGHTDOCK_API PieChart : public Chart {
 public:
   std::unique_ptr<Chart> clone() const override {
     return std::make_unique<PieChart>(*this);

@@ -12,6 +12,7 @@
 #include "insightdock/cartesian_chart.h"
 #include "insightdock/chart_style.h"
 #include "insightdock/color.h"
+#include "insightdock/export_macros.h"
 
 namespace insightdock::charts {
 
@@ -59,7 +60,7 @@ struct BarOptions {
  * ChartExporter::save(bar, "bars.png");
  * @endcode
  */
-class BarChart : public CartesianChart {
+class INSIGHTDOCK_API BarChart : public CartesianChart {
 public:
   std::unique_ptr<Chart> clone() const override {
     return std::make_unique<BarChart>(*this);

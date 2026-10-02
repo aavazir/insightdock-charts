@@ -12,6 +12,7 @@
 #include "insightdock/chart.h"
 #include "insightdock/chart_style.h"
 #include "insightdock/color.h"
+#include "insightdock/export_macros.h"
 #include <string>
 #include <vector>
 
@@ -75,7 +76,7 @@ struct ScatterOptions {
  * ChartExporter::save(chart, "scatter.png");
  * @endcode
  */
-class ScatterChart : public Chart {
+class INSIGHTDOCK_API ScatterChart : public Chart {
 public:
   std::unique_ptr<Chart> clone() const override {
     return std::make_unique<ScatterChart>(*this);

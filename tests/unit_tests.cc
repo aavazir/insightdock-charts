@@ -1963,7 +1963,23 @@ static void test_supersampled_export_does_not_mutate_chart_and_is_thread_safe() 
   CHECK(cline.options().width == w);
 }
 
+
+static void test_pdf_backend_does_not_hijack_png_export() {
+  BarChart bar;
+  bar.set_categories({"a"});
+  bar.add_series("s", {1});
+  ExportOptions eo; // format Png, but a Vector PDF backend preference
+  eo.pdf_backend = PdfBackend::Vector;
+  auto res = ChartExporter::encode(bar, eo);
+  CHECK(static_cast<bool>(res));
+  if (res) {
+    CHECK(res.value.size() > 4);
+    CHECK(res.value[0] == 0x89 && res.value[1] == 'P' && res.value[2] == 'N' && res.value[3] == 'G');
+  }
+}
+
 int main() {
+  test_pdf_backend_does_not_hijack_png_export();
   test_supersampled_export_does_not_mutate_chart_and_is_thread_safe();
 #ifdef INSIGHTDOCK_FONT_LATIN
   test_latin_embedded_font_has_accents();

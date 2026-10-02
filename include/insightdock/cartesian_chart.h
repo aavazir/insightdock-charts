@@ -10,6 +10,7 @@
 #define INSIGHTDOCK_CHARTS_CARTESIAN_CHART_H
 
 #include "insightdock/chart.h"
+#include "insightdock/export_macros.h"
 #include "insightdock/geometry.h"
 #include "insightdock/scale.h"
 #include <functional>
@@ -170,7 +171,7 @@ struct CartesianOptions {
  *
  * @see BarChart, LineChart
  */
-class CartesianChart : public Chart {
+class INSIGHTDOCK_API CartesianChart : public Chart {
 public:
   /**
    * @brief Context passed to @ref draw_series() and @ref draw_overlay() during rendering.
@@ -180,12 +181,12 @@ public:
    * `PlotContext const&` parameter.
    */
   struct PlotContext {
-    ImageBuffer &buffer;               ///< Target pixel buffer.
-    Rect plot;                         ///< Plot area rectangle (excluding margins).
-    Scale x_scale;                     ///< Category index, or continuous value, → pixel.
-    Scale y_scale;                     ///< Data value → pixel (primary, left axis).
-    Scale y_scale2;                    ///< Data value → pixel (secondary, right axis).
-    bool has_y2 = false;               ///< Whether @ref y_scale2 is active for this render.
+    ImageBuffer &buffer; ///< Target pixel buffer.
+    Rect plot;           ///< Plot area rectangle (excluding margins).
+    Scale x_scale;       ///< Category index, or continuous value, → pixel.
+    Scale y_scale;       ///< Data value → pixel (primary, left axis).
+    Scale y_scale2;      ///< Data value → pixel (secondary, right axis).
+    bool has_y2 = false; ///< Whether @ref y_scale2 is active for this render.
     /**
      * Whether @ref x_scale maps a continuous numeric domain (from @ref x_values) rather
      * than category index — true only when the concrete chart type opted in via

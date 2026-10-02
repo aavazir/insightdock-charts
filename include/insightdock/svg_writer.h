@@ -9,6 +9,7 @@
 #ifndef INSIGHTDOCK_CHARTS_SVG_WRITER_H
 #define INSIGHTDOCK_CHARTS_SVG_WRITER_H
 
+#include "insightdock/export_macros.h"
 #include "insightdock/image_buffer.h"
 #include <cstdint>
 #include <string>
@@ -16,8 +17,8 @@
 
 namespace insightdock::charts {
 
-bool write_svg(std::string const &path, ImageBuffer const &img);
-std::vector<uint8_t> encode_svg(ImageBuffer const &img);
+INSIGHTDOCK_API bool write_svg(std::string const &path, ImageBuffer const &img);
+INSIGHTDOCK_API std::vector<uint8_t> encode_svg(ImageBuffer const &img);
 
 } // namespace insightdock::charts
 

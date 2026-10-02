@@ -5,6 +5,7 @@
 #define INSIGHTDOCK_CHARTS_DETAIL_REFERENCE_LINES_H
 
 #include "insightdock/cartesian_chart.h"
+#include "insightdock/export_macros.h"
 
 namespace insightdock::charts::detail {
 
@@ -16,7 +17,7 @@ namespace insightdock::charts::detail {
  * be called before a subclass draws its own overlay geometry (e.g. ComboChart's line
  * series), so reference lines sit behind the chart's own data.
  */
-void draw_reference_lines(CartesianChart::PlotContext const &ctx);
+INSIGHTDOCK_API void draw_reference_lines(CartesianChart::PlotContext const &ctx);
 
 } // namespace insightdock::charts::detail
 

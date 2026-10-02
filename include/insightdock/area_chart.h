@@ -11,6 +11,7 @@
 
 #include "insightdock/cartesian_chart.h"
 #include "insightdock/chart_style.h"
+#include "insightdock/export_macros.h"
 
 namespace insightdock::charts {
 
@@ -35,7 +36,7 @@ struct AreaChartOptions {
  *
  * When @ref AreaChartOptions::stacked is true, each series stacks on the previous.
  */
-class AreaChart : public CartesianChart {
+class INSIGHTDOCK_API AreaChart : public CartesianChart {
 public:
   std::unique_ptr<Chart> clone() const override {
     return std::make_unique<AreaChart>(*this);

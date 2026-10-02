@@ -6,13 +6,14 @@
 
 #include "insightdock/chart_style.h"
 #include "insightdock/color.h"
+#include "insightdock/export_macros.h"
 #include "insightdock/image_buffer.h"
 
 namespace insightdock::charts::detail {
 
 /** @brief Draws a single point marker of the given shape, centered at (x, y). */
-void draw_marker(ImageBuffer &buffer, float x, float y, float radius, PointMarkerShape shape,
-                 Color const &color);
+INSIGHTDOCK_API void draw_marker(ImageBuffer &buffer, float x, float y, float radius,
+                                 PointMarkerShape shape, Color const &color);
 
 } // namespace insightdock::charts::detail
 

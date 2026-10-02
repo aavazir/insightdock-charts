@@ -14,6 +14,7 @@
 #ifndef INSIGHTDOCK_CHARTS_SCALE_H
 #define INSIGHTDOCK_CHARTS_SCALE_H
 
+#include "insightdock/export_macros.h"
 #include <vector>
 
 namespace insightdock::charts {
@@ -41,7 +42,7 @@ enum class ScaleType {
  * @ref ScaleType selects the interpolation mode. @ref linear_nice builds a
  * scale with a rounded ("nice") domain and returns it.
  */
-class Scale {
+class INSIGHTDOCK_API Scale {
 public:
   Scale() = default;
 

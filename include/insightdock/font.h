@@ -13,6 +13,7 @@
 #define INSIGHTDOCK_CHARTS_FONT_H
 
 #include "insightdock/color.h"
+#include "insightdock/export_macros.h"
 #include "insightdock/image_buffer.h"
 #include <cstddef>
 #include <memory>
@@ -46,17 +47,17 @@ using FontDataPtr = std::shared_ptr<FontData const>;
  * @return Shared font bytes, or `nullptr` if the file is unreadable, too large (> 64 MiB) or
  *         not a parseable TrueType font.
  */
-FontDataPtr load_font_data(char const *path);
+INSIGHTDOCK_API FontDataPtr load_font_data(char const *path);
 
 /** @brief Copy and validate in-memory TTF bytes; `nullptr` if not a parseable TrueType font. */
-FontDataPtr make_font_data(unsigned char const *data, std::size_t size);
+INSIGHTDOCK_API FontDataPtr make_font_data(unsigned char const *data, std::size_t size);
 
 /**
  * @brief TrueType font rasterizer (stb_truetype backend).
  *
  * Non-copyable. Construct with default embedded font or load custom TTF data.
  */
-class Font {
+class INSIGHTDOCK_API Font {
 public:
   /** @brief Construct with embedded ASCII-subset font (~20 KB). */
   Font();

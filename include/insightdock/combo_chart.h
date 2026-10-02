@@ -11,6 +11,7 @@
 
 #include "insightdock/bar_chart.h"
 #include "insightdock/cartesian_chart.h"
+#include "insightdock/export_macros.h"
 #include <vector>
 
 namespace insightdock::charts {
@@ -52,7 +53,7 @@ struct ComboLineOptions {
  * ChartExporter::save(combo, "sessions.png");
  * @endcode
  */
-class ComboChart : public CartesianChart {
+class INSIGHTDOCK_API ComboChart : public CartesianChart {
 public:
   std::unique_ptr<Chart> clone() const override {
     return std::make_unique<ComboChart>(*this);

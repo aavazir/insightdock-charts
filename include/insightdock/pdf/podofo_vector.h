@@ -13,6 +13,7 @@
 #ifndef INSIGHTDOCK_PDF_PODOFO_VECTOR_H
 #define INSIGHTDOCK_PDF_PODOFO_VECTOR_H
 
+#include "insightdock/export_macros.h"
 #include "insightdock/palette.h"
 #include <string>
 #include <utility>
@@ -87,9 +88,9 @@ struct PieVectorOptions {
  * @param opts   Vector styling and label behavior.
  * @param fonts  Optional PDF fonts for labels.
  */
-void draw_pie(PoDoFo::PdfDocument &doc, PoDoFo::PdfPainter &painter, PieChart const &chart,
-              double x, double y, double w, double h, PieVectorOptions const &opts = {},
-              PdfVectorFonts fonts = {});
+INSIGHTDOCK_API void draw_pie(PoDoFo::PdfDocument &doc, PoDoFo::PdfPainter &painter,
+                              PieChart const &chart, double x, double y, double w, double h,
+                              PieVectorOptions const &opts = {}, PdfVectorFonts fonts = {});
 
 /**
  * @brief Draw a pie from label/value pairs without constructing a @ref PieChart.
@@ -99,10 +100,10 @@ void draw_pie(PoDoFo::PdfDocument &doc, PoDoFo::PdfPainter &painter, PieChart co
  * @param slices Vector of {label, value} pairs.
  * @see draw_pie
  */
-void draw_pie_slices(PoDoFo::PdfDocument &doc, PoDoFo::PdfPainter &painter,
-                     std::vector<std::pair<std::string, double>> const &slices, double x, double y,
-                     double w, double h, PieVectorOptions const &opts = {},
-                     PdfVectorFonts fonts = {});
+INSIGHTDOCK_API void draw_pie_slices(PoDoFo::PdfDocument &doc, PoDoFo::PdfPainter &painter,
+                                     std::vector<std::pair<std::string, double>> const &slices,
+                                     double x, double y, double w, double h,
+                                     PieVectorOptions const &opts = {}, PdfVectorFonts fonts = {});
 
 /**
  * @brief Draw any @ref Chart using vectors when supported, else raster embed.
@@ -110,9 +111,10 @@ void draw_pie_slices(PoDoFo::PdfDocument &doc, PoDoFo::PdfPainter &painter,
  * Pie charts use vector paths; bar and line charts fall back to PNG embed via
  * @ref draw_chart.
  */
-void draw_chart_vector(PoDoFo::PdfDocument &doc, PoDoFo::PdfPainter &painter, Chart const &chart,
-                       double x, double y, double w, double h,
-                       PieVectorOptions const &pie_opts = {}, PdfVectorFonts fonts = {});
+INSIGHTDOCK_API void draw_chart_vector(PoDoFo::PdfDocument &doc, PoDoFo::PdfPainter &painter,
+                                       Chart const &chart, double x, double y, double w, double h,
+                                       PieVectorOptions const &pie_opts = {},
+                                       PdfVectorFonts fonts = {});
 
 } // namespace insightdock::charts::podofo
 

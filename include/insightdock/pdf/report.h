@@ -15,6 +15,7 @@
 
 #include "insightdock/chart.h"
 #include "insightdock/export.h"
+#include "insightdock/export_macros.h"
 
 #include <podofo/podofo.h>
 
@@ -34,14 +35,14 @@ struct PdfPageLayout {
 /**
  * @brief Split comma- or space-separated MAC/IP lists onto separate lines for table cells.
  */
-std::string multiline_cell(std::string const &text);
+INSIGHTDOCK_API std::string multiline_cell(std::string const &text);
 
 /**
  * @brief Builder for paginated PDF reports with tables and section headings.
  *
  * Coordinates use millimetres from the top-left of the page (jsPDF-style).
  */
-class PdfReportBuilder {
+class INSIGHTDOCK_API PdfReportBuilder {
 public:
   PdfReportBuilder(PoDoFo::PdfMemDocument &doc, PoDoFo::PdfPainter &painter, PoDoFo::PdfFont &font,
                    PoDoFo::PdfFont &font_bold);

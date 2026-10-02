@@ -1,6 +1,12 @@
 cmake_minimum_required(VERSION 3.14)
 project(InsightDockCharts VERSION 0.7.0 LANGUAGES CXX)
 
+if(PROJECT_VERSION_MAJOR EQUAL 0)
+  set(INSIGHTDOCK_SOVERSION "${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}")
+else()
+  set(INSIGHTDOCK_SOVERSION "${PROJECT_VERSION_MAJOR}")
+endif()
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -52,7 +58,20 @@ add_library(InsightDock::Charts ALIAS InsightDockCharts)
 set_target_properties(InsightDockCharts PROPERTIES
   OUTPUT_NAME insightdock
   EXPORT_NAME Charts
+  VERSION ${PROJECT_VERSION}
+  # ABI policy: source-compatible only across releases. SOVERSION tracks major.minor while the
+  # major is 0, then the major alone from 1.0 (a new minor may change the ABI before 1.0).
+  SOVERSION ${INSIGHTDOCK_SOVERSION}
+  CXX_VISIBILITY_PRESET hidden
+  VISIBILITY_INLINES_HIDDEN ON
 )
+
+# Public symbols are marked INSIGHTDOCK_API (include/insightdock/export_macros.h).
+if(BUILD_SHARED_LIBS)
+  target_compile_definitions(InsightDockCharts PRIVATE INSIGHTDOCK_BUILDING=1)
+else()
+  target_compile_definitions(InsightDockCharts PUBLIC INSIGHTDOCK_STATIC=1)
+endif()
 
 # pie_chart.cc is always in INSIGHTDOCK_SOURCES; tell export.cc it can use PieChart
 target_compile_definitions(InsightDockCharts PUBLIC INSIGHTDOCK_HAS_PIE=1)
@@ -95,10 +114,16 @@ install(EXPORT InsightDockChartsTargets
 )
 
 include(CMakePackageConfigHelpers)
+# Before 1.0 a new minor release may break source/ABI compatibility, so match on major.minor.
+if(PROJECT_VERSION_MAJOR EQUAL 0)
+  set(INSIGHTDOCK_VERSION_COMPAT SameMinorVersion)
+else()
+  set(INSIGHTDOCK_VERSION_COMPAT SameMajorVersion)
+endif()
 write_basic_package_version_file(
   "${CMAKE_CURRENT_BINARY_DIR}/InsightDockConfigVersion.cmake"
   VERSION ${PROJECT_VERSION}
-  COMPATIBILITY SameMajorVersion
+  COMPATIBILITY ${INSIGHTDOCK_VERSION_COMPAT}
 )
 
 configure_package_config_file(

@@ -12,6 +12,7 @@
 #ifndef INSIGHTDOCK_PDF_PODOFO_ADAPTER_H
 #define INSIGHTDOCK_PDF_PODOFO_ADAPTER_H
 
+#include "insightdock/export_macros.h"
 #include "insightdock/image_buffer.h"
 
 namespace PoDoFo {
@@ -36,8 +37,8 @@ namespace insightdock::charts::podofo {
  *
  * @see ChartExporter::draw_pdf
  */
-void draw_chart(PoDoFo::PdfDocument &doc, PoDoFo::PdfPainter &painter, ImageBuffer const &img,
-                double x, double y, double w, double h);
+INSIGHTDOCK_API void draw_chart(PoDoFo::PdfDocument &doc, PoDoFo::PdfPainter &painter,
+                                ImageBuffer const &img, double x, double y, double w, double h);
 
 } // namespace insightdock::charts::podofo
 

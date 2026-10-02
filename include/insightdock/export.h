@@ -16,6 +16,7 @@
 
 #include "insightdock/chart.h"
 #include "insightdock/error.h"
+#include "insightdock/export_macros.h"
 #include "insightdock/image_buffer.h"
 #include <cstdint>
 #include <string>
@@ -69,7 +70,7 @@ struct ExportOptions {
  * @param path File path (e.g. `"chart.png"`, `"out.pdf"`).
  * @return Detected format, or @ref OutputFormat::Png if extension is unknown.
  */
-OutputFormat format_from_path(std::string const &path);
+INSIGHTDOCK_API OutputFormat format_from_path(std::string const &path);
 
 /**
  * @brief Unified chart export API — render once, save or encode.
@@ -83,7 +84,7 @@ OutputFormat format_from_path(std::string const &path);
  *
  * @see ExportOptions, format_from_path
  */
-class ChartExporter {
+class INSIGHTDOCK_API ChartExporter {
 public:
   /**
    * @brief Render a chart to an RGBA buffer.

@@ -12,6 +12,7 @@
 #ifndef INSIGHTDOCK_CHARTS_PNG_WRITER_H
 #define INSIGHTDOCK_CHARTS_PNG_WRITER_H
 
+#include "insightdock/export_macros.h"
 #include "insightdock/image_buffer.h"
 #include <cstdint>
 #include <string>
@@ -25,14 +26,14 @@ namespace insightdock::charts {
  * @param img  Source buffer.
  * @return `true` on success.
  */
-bool write_png(std::string const &path, ImageBuffer const &img);
+INSIGHTDOCK_API bool write_png(std::string const &path, ImageBuffer const &img);
 
 /**
  * @brief Encode an RGBA buffer to PNG bytes in memory.
  * @param img Source buffer.
  * @return PNG file bytes, or empty vector on failure.
  */
-std::vector<uint8_t> encode_png(ImageBuffer const &img);
+INSIGHTDOCK_API std::vector<uint8_t> encode_png(ImageBuffer const &img);
 
 /**
  * @brief Write an RGBA buffer to a JPEG file.
@@ -41,7 +42,7 @@ std::vector<uint8_t> encode_png(ImageBuffer const &img);
  * @param quality JPEG quality 1–100 (default 90).
  * @return `true` on success.
  */
-bool write_jpeg(std::string const &path, ImageBuffer const &img, int quality = 90);
+INSIGHTDOCK_API bool write_jpeg(std::string const &path, ImageBuffer const &img, int quality = 90);
 
 /**
  * @brief Encode an RGBA buffer to JPEG bytes in memory.
@@ -49,7 +50,7 @@ bool write_jpeg(std::string const &path, ImageBuffer const &img, int quality = 9
  * @param quality JPEG quality 1–100.
  * @return JPEG bytes, or empty on failure.
  */
-std::vector<uint8_t> encode_jpeg(ImageBuffer const &img, int quality = 90);
+INSIGHTDOCK_API std::vector<uint8_t> encode_jpeg(ImageBuffer const &img, int quality = 90);
 
 } // namespace insightdock::charts
 

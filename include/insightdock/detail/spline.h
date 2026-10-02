@@ -4,6 +4,7 @@
 #ifndef INSIGHTDOCK_CHARTS_DETAIL_SPLINE_H
 #define INSIGHTDOCK_CHARTS_DETAIL_SPLINE_H
 
+#include "insightdock/export_macros.h"
 #include <utility>
 #include <vector>
 
@@ -20,7 +21,7 @@ namespace insightdock::charts::detail {
  * @param segments_per_span Points generated between each pair of control points.
  * @return Expanded point list; a straight copy of @p points if fewer than 3 points are given.
  */
-std::vector<std::pair<float, float>>
+INSIGHTDOCK_API std::vector<std::pair<float, float>>
 catmull_rom_expand(std::vector<std::pair<float, float>> const &points, int segments_per_span = 8);
 
 } // namespace insightdock::charts::detail
