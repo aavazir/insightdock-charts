@@ -21,11 +21,15 @@ before 1.0. See `docs-site/guides/thread-safety-and-abi.md`.
 - [ ] vcpkg port (optional): `insightdock-charts`
 - [ ] Tag: `vX.Y.Z`
 
+## Release candidates
+
+Publish `vX.Y.Z-rcN` first. `scripts/check_version.sh` strips the `-rcN` suffix, so CMake, OpenWrt and vcpkg keep the plain `X.Y.Z`. After the feedback window, tag the final release. Fill the vcpkg portfile `SHA512` from the tag's source archive before submitting the port.
+
 ## Tagging
 
 ```bash
-git tag -a v1.0.0 -m "InsightDock Charts for C++ v1.0.0"
-git push origin v1.0.0
+git tag -a v1.0.0-rc1 -m "InsightDock Charts for C++ v1.0.0-rc1"
+git push origin v1.0.0-rc1
 ```
 
 ## Artifacts

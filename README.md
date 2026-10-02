@@ -8,11 +8,11 @@ Production-oriented C++17 charting for PDF reports, PNG/JPEG export, and embedde
 
 ## Features
 
-- **Chart types:** pie, bar (grouped / stacked, vertical or horizontal), multi-series line (optional area fill), area (stacked), combo (bar + line), scatter and bubble
+- **Chart types:** pie/doughnut, bar (grouped, stacked or 100%-stacked, vertical or horizontal), multi-series line (optional area fill, step lines), area (stacked or 100%), combo (bar + line, dual axis), scatter and bubble, histogram
 - **Axes:** linear, logarithmic (Bar/Line/Area/Combo y-axis), and continuous DateTime x-axis positioned by real timestamp (Line/Area)
 - **Easy export:** one API — `ChartExporter::save(chart, "output.png")` for PNG, JPEG, SVG, and PDF
 - **Output:** RGBA `ImageBuffer`, PNG/JPEG, SVG and PDF as native **vector** output for pie, bar, line, area and combo (selectable text, crisp at any zoom; scatter embeds a raster) or as a raster embed for every chart type
-- **Styling:** Chart.js / AmCharts 12-color palette, Tableau-10 palette (pie), axes, grid, legend, title
+- **Styling:** Chart.js 12-color, Tableau-10 and colorblind-safe palettes; per-series dash, marker, width and opacity; gap handling for missing values; reference lines; multi-line titles
 - **Text:** UTF-8 labels; embedded ASCII font (~20 KB) or an optional Latin-1/Latin-Ext font (`INSIGHTDOCK_FONT_LATIN`); bring any TTF via `ChartOptions::font`
 - **Core deps:** C++17 stdlib only (stb headers compiled into the library)
 - **Optional PDF:** PoDoFo adapter via `insightdock/pdf/podofo.h`
@@ -191,37 +191,24 @@ library actually ends up — `configure_file()` bakes `CMAKE_INSTALL_PREFIX` at 
 |----------|-----------------|--------------|
 | Linux distros | Yes (CMake + Make) | Yes (optional) |
 | OpenWrt / cross | Yes (Make, no GUI deps) | Yes — verified on OpenWrt x86_64/musl, `BUILD_SHARED_LIBS=ON` with PoDoFo packaged separately |
-| Windows | CMake + MSVC/MinGW (feasibility target) | Optional |
+| macOS | CMake (CI) | Optional |
+| Windows | CMake + MSVC (CI; static and DLL) | Optional |
 
-## Competitive positioning
+## How it compares
 
-InsightDock is compared against **both proprietary and open-source** chart libraries. Full matrices: [docs/COMPARISON.md](docs/COMPARISON.md) (also the basis for the future public website).
+InsightDock is for **native C++, headless report output** (PNG, JPEG, SVG, PDF) under an MIT license. It is not an interactive plotting toolkit. For zoom/pan in a desktop app use QCustomPlot, ImPlot or Qt Charts; for scientific plotting use Matplot++ or PLplot; for the widest chart catalogue use ChartDirector.
 
-InsightDock does not claim immediate parity with every alternative. It targets developers who need **native C++**, **headless report output**, and an **MIT-licensed extensible core**.
+| | InsightDock | QCustomPlot | Matplot++ | ImPlot |
+|---|---|---|---|---|
+| License | MIT | GPL-3 / commercial | MIT | MIT |
+| Needs | C++17 only | Qt | Gnuplot at runtime | Dear ImGui |
+| Interactive | No | Yes | Limited | Yes |
+| Vector PDF / SVG | Yes, pie/bar/line/area/combo | PDF | Yes | No |
+| Embedded / OpenWrt | Yes | No | No | No |
 
-### vs commercial (proprietary)
+Full comparison, including limits: [docs/COMPARISON.md](docs/COMPARISON.md).
 
-| | ChartDirector | StockChartX | InsightDock (now) |
-|---|---------------|-------------|-------------------|
-| Breadth of chart types | Very broad | Finance-focused | Pie, bar, line, area, combo, scatter/bubble |
-| Report/PDF output | Strong | Strong | PNG/JPEG, native vector SVG/PDF (pie, bar, line, area, combo) |
-| License | Commercial | Commercial | MIT |
-| Embedded/server | Possible | Desktop/server | Core designed for headless/embedded |
-| Extensibility | Closed | Closed | Open C++ architecture from day one |
-
-### vs open source (selected C++ options)
-
-| | ImPlot / Qt Charts | PLplot / matplotlib-cpp | InsightDock (now) |
-|---|-------------------|-------------------------|-------------------|
-| Headless / server reports | GUI-oriented | Varies (Python for matplotlib-cpp) | Core design goal |
-| License | MIT / GPL+commercial | LGPL / MIT+Python stack | MIT |
-| Embedded / OpenWrt | Heavy or impractical | Often impractical | Makefile core, STL-only |
-| PDF vector reports | Not first-class | Possible (device-dependent) | Native vector charts + raster embed |
-| API simplicity | Framework-specific | Scientific / script idioms | `ChartExporter::save` in few lines |
-
-**Roadmap:** core chart types first, then breadth (ChartDirector gaps) and finance depth (StockChartX gaps). Open-source gaps (SVG, interactivity, chart count) tracked in [ROADMAP.md](ROADMAP.md) and [docs/COMPARISON.md](docs/COMPARISON.md).
-
-Contributions for new chart types are welcome from day one — see [CONTRIBUTING.md](CONTRIBUTING.md).
+Contributions for new chart types are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Measurement criteria
 

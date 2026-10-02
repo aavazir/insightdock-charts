@@ -87,7 +87,7 @@ Chart (abstract)
 ### Key types
 - **`ImageBuffer`** (`include/insightdock/image_buffer.h`, `src/image_buffer.cc`) — RGBA raster buffer with drawing primitives (lines, polylines, polygons, sectors, circles, `fill_rect`). All chart rendering writes here. `downsample()` implements supersampling AA.
 - **`ChartExporter`** (`include/insightdock/export.h`, `src/export.cc`) — static-only export API. `format_from_path()` infers format from extension. PDF methods are guarded by `#ifdef INSIGHTDOCK_HAS_PODOFO`. `ExportOptions::svg_backend = SvgBackend::Vector` dispatches to `src/svg_pie.cc` for `PieChart` and to `SvgTarget` (`src/svg_target.cc`) for Cartesian charts (native shapes + `<text>`); scatter raster-falls back, same `Raster`/`Vector` shape as `PdfBackend`.
-- **`DrawTarget`** (`include/insightdock/draw_target.h`) — pixel-space drawing interface Cartesian charts render into via `Chart::draw(DrawTarget&)`: `RasterTarget` (wraps `ImageBuffer`, byte-identical PNGs), `SvgTarget` (`detail/svg_target.h`), `PdfTarget` (`pdf/podofo_target.h`). Text is always *measured* with the embedded `Font` so layout is the same on every target.
+- **`DrawTarget`** (`include/insightdock/draw_target.h`) — pixel-space drawing interface Cartesian charts render into via `Chart::draw(DrawTarget&)`: `RasterTarget` (wraps `ImageBuffer`; the gallery test compares decoded pixels), `SvgTarget` (`detail/svg_target.h`), `PdfTarget` (`pdf/podofo_target.h`). Text is always *measured* with the embedded `Font` so layout is the same on every target.
 - **`CartesianChart`** (`include/insightdock/cartesian_chart.h`, `src/cartesian_chart.cc`) — handles background, title, axes, grid, and legend; calls `draw_series(PlotContext&)` for the concrete geometry (`PlotContext::target` is a `DrawTarget&`).
 - **`Scale`** (`include/insightdock/scale.h`, `src/scale.cc`) — linear mapping between data values and pixel coordinates; used by `CartesianChart` for both axes.
 - **`Font`** (`include/insightdock/font.h`, `src/font.cc`) — embedded ASCII-subset TTF (~20 KB) compiled in via `include/insightdock/embedded_font.h`; text is decoded as UTF-8 (missing glyphs draw as `?`); inject a full TTF with `ChartOptions::font = load_font_data(path)`; `INSIGHTDOCK_FONT_LATIN` / `FONT_MODE=embedded-latin` swaps in `embedded_font_latin.h`.
@@ -99,7 +99,7 @@ Chart (abstract)
 Both compiled only when `INSIGHTDOCK_WITH_PODOFO=ON`; guarded by `INSIGHTDOCK_HAS_PODOFO` macro.
 
 ### Third-party
-`third_party/` — stb headers (`stb_image.h`, `stb_image_write.h`, `stb_truetype.h`) compiled into the library. Zero link-time external dependencies in the core.
+`third_party/` — stb headers (`stb_image_write.h`, `stb_truetype.h`) compiled into the library. Zero link-time external dependencies in the core. `tests/third_party/stb_image.h` is test-only (decodes reference PNGs) and never shipped.
 
 ### Directory conventions
 - `include/insightdock/` — public headers; umbrella is `charts.h`

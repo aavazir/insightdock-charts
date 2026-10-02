@@ -6,6 +6,10 @@ Format based on [Keep a Changelog](https://keepachangelog.com/). Versioning foll
 
 ## [Unreleased]
 
+## [1.0.0-rc1] — 2026-10-02 — first public release candidate
+
+Release candidate for 1.0. The API is frozen for the feedback window except for fixes to problems found by outside users. Binary compatibility is not promised, only source compatibility.
+
 ### Phase E — platforms and packaging
 - **CI matrix** — Windows (MSVC, static and DLL), macOS and a shared-library Linux build, in addition to x86-64 and ARM64 Linux. (Added without a local MSVC/macOS run; the first GitHub run is the real test.)
 - **MSVC build flags** — `/W4 /utf-8 /permissive-`, `/WX` under `INSIGHTDOCK_WERROR`; on Windows the DLL and all executables share one output directory so shared builds run from the build tree.
