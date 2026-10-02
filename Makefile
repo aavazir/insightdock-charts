@@ -40,6 +40,7 @@ SRCS = \
   src/export.cc \
   src/png_writer.cc \
   src/svg_writer.cc \
+  src/svg_target.cc \
   src/tick_format.cc \
   src/spline.cc \
   src/raster_target.cc \

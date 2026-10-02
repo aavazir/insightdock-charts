@@ -47,7 +47,7 @@ enum class PdfBackend {
 /** @brief SVG drawing strategy when writing or encoding SVG output. */
 enum class SvgBackend {
   Raster, ///< Rasterize chart to PNG and base64-inline it (works for all chart types).
-  Vector, ///< Native SVG `<path>`/`<text>` for pie; other chart types fall back to raster.
+  Vector, ///< Native SVG shapes and `<text>` for pie, bar, line, area and combo; scatter falls back to raster.
 };
 
 /**

@@ -2,6 +2,7 @@
 // Copyright (c) InsightDock contributors
 
 #include "insightdock/area_chart.h"
+#include "insightdock/detail/finite_range.h"
 #include "insightdock/detail/marker.h"
 #include "insightdock/detail/reference_lines.h"
 #include "insightdock/detail/series_runs.h"
@@ -14,6 +15,25 @@
 #include <vector>
 
 namespace insightdock::charts {
+
+double AreaChart::compute_y_max() const {
+  if (!area_opts_.stacked)
+    return CartesianChart::compute_y_max();
+  // Stacked: the axis must fit the per-category totals, not the tallest single series.
+  std::size_t ncat = std::max<std::size_t>(categories_.size(), 1);
+  for (auto const &s : series_)
+    ncat = std::max(ncat, s.values.size());
+  detail::FiniteRange r;
+  for (std::size_t ci = 0; ci < ncat; ++ci) {
+    double sum = 0.0;
+    for (auto const &s : series_) {
+      if (ci < s.values.size() && std::isfinite(s.values[ci]))
+        sum += s.values[ci];
+    }
+    r.add(sum);
+  }
+  return r.max_from_zero();
+}
 
 void AreaChart::draw_series(PlotContext &ctx) const {
   std::size_t ncat =

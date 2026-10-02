@@ -44,6 +44,7 @@ set(INSIGHTDOCK_SOURCES
   src/png_writer.cc
   src/svg_writer.cc
   src/svg_pie.cc
+  src/svg_target.cc
   src/export.cc
 )
 

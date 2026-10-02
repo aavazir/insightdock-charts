@@ -173,6 +173,12 @@ float Font::line_height() const {
   return (state_->ascent - state_->descent + state_->line_gap) * state_->scale;
 }
 
+float Font::ascent() const {
+  if (!loaded_ || !state_)
+    return pixel_size_;
+  return state_->ascent * state_->scale;
+}
+
 float Font::baseline_offset(TextBaseline baseline) const {
   if (!loaded_ || !state_)
     return 0.0f;

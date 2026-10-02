@@ -210,20 +210,85 @@ static void test_svg_vector_pie_single_slice_uses_circle() {
   CHECK(s.find("<circle") != std::string::npos);
 }
 
-static void test_svg_vector_non_pie_falls_back_to_raster() {
-  BarChart bar;
-  bar.options().width = 200;
-  bar.options().height = 150;
-  bar.set_categories({"Q1", "Q2"});
-  bar.add_series("Rev", {10, 20});
-
+static std::string vector_svg(Chart &chart) {
   ExportOptions opts;
   opts.format = OutputFormat::Svg;
   opts.svg_backend = SvgBackend::Vector;
-  auto bytes = ChartExporter::encode(bar, opts);
+  auto bytes = ChartExporter::encode(chart, opts);
   CHECK(static_cast<bool>(bytes));
-  std::string s(bytes.value.begin(), bytes.value.end());
-  CHECK(s.find("base64") != std::string::npos); // raster fallback
+  return std::string(bytes.value.begin(), bytes.value.end());
+}
+
+static bool has(std::string const &s, char const *needle) {
+  return s.find(needle) != std::string::npos;
+}
+
+static void test_svg_vector_bar_chart_is_native() {
+  BarChart bar;
+  bar.options().width = 300;
+  bar.options().height = 200;
+  bar.options().title = "Revenue & <Costs>";
+  bar.set_categories({"Q1", "Q2"});
+  bar.add_series("Rev", {10, 20});
+  bar.cartesian_options().y_axis_label = "USD";
+  std::string s = vector_svg(bar);
+  CHECK(!has(s, "base64"));
+  CHECK(!has(s, "<image"));
+  CHECK(has(s, "<rect"));
+  CHECK(has(s, "<text"));
+  CHECK(has(s, ">Q1</text>"));
+  CHECK(has(s, "Revenue &amp; &lt;Costs&gt;")); // XML-escaped title
+  CHECK(has(s, "rotate(-90)"));                 // y-axis title
+}
+
+static void test_svg_vector_line_chart_is_native() {
+  LineChart line;
+  line.options().width = 300;
+  line.options().height = 200;
+  line.set_categories({"a", "b", "c"});
+  SeriesStyle st;
+  st.dash = DashPattern{6.0f, 3.0f};
+  st.marker = PointMarkerShape::Square;
+  line.add_series("dashed", {1, 3, 2}, Color::rgb(200, 30, 30), st);
+  line.add_series("solid", {2, 1, 3});
+  line.line_options().show_points = true;
+  std::string s = vector_svg(line);
+  CHECK(!has(s, "base64"));
+  CHECK(has(s, "<polyline"));
+  CHECK(has(s, "stroke-dasharray=\"6 3\""));
+  CHECK(has(s, "<circle")); // markers of the plain series
+}
+
+static void test_svg_vector_area_and_combo_are_native() {
+  AreaChart area;
+  area.options().width = 300;
+  area.options().height = 200;
+  area.set_categories({"a", "b", "c"});
+  area.add_series("s", {1, 3, 2});
+  std::string a = vector_svg(area);
+  CHECK(!has(a, "base64"));
+  CHECK(has(a, "<polygon"));
+  CHECK(has(a, "fill-opacity")); // translucent fill
+
+  ComboChart combo;
+  combo.options().width = 300;
+  combo.options().height = 200;
+  combo.set_categories({"a", "b"});
+  combo.add_bar_series("bars", {5, 6});
+  combo.add_line_series("line", {50, 60}, true);
+  std::string c = vector_svg(combo);
+  CHECK(!has(c, "base64"));
+  CHECK(has(c, "<rect"));
+  CHECK(has(c, "<polyline"));
+  CHECK(has(c, "rotate(90)") || has(c, "text-anchor=\"start\"")); // right-axis labels present
+}
+
+static void test_svg_vector_scatter_falls_back_to_raster() {
+  ScatterChart sc;
+  sc.options().width = 200;
+  sc.options().height = 150;
+  sc.add_series("p", {{1, 1}, {2, 3}});
+  CHECK(has(vector_svg(sc), "base64")); // no vector path yet
 }
 
 // ---------------------------------------------------------------------------
@@ -2272,7 +2337,10 @@ int main() {
   // Native SVG pie (SvgBackend::Vector)
   test_svg_vector_pie_emits_paths();
   test_svg_vector_pie_single_slice_uses_circle();
-  test_svg_vector_non_pie_falls_back_to_raster();
+  test_svg_vector_bar_chart_is_native();
+  test_svg_vector_line_chart_is_native();
+  test_svg_vector_area_and_combo_are_native();
+  test_svg_vector_scatter_falls_back_to_raster();
 
   // PieChart doughnut cutout
   test_pie_doughnut_cutout_center_matches_background();

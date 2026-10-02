@@ -5,6 +5,7 @@
 
 #ifdef INSIGHTDOCK_HAS_PIE
 #include "insightdock/detail/svg_pie.h"
+#include "insightdock/detail/svg_target.h"
 #include "insightdock/pie_chart.h"
 #endif
 #include "insightdock/png_writer.h"
@@ -67,7 +68,15 @@ bool save_svg_vector_page(Chart const &chart, std::string const &path) {
     return static_cast<bool>(out);
   }
 #endif
-  return write_svg(path, chart.render());
+  std::string xml = detail::build_chart_svg(chart);
+  if (!xml.empty()) {
+    std::ofstream out(path, std::ios::binary);
+    if (!out)
+      return false;
+    out << xml;
+    return static_cast<bool>(out);
+  }
+  return write_svg(path, chart.render()); // chart type without a vector path (scatter)
 }
 
 std::vector<uint8_t> encode_svg_vector_page(Chart const &chart) {
@@ -77,7 +86,10 @@ std::vector<uint8_t> encode_svg_vector_page(Chart const &chart) {
     return std::vector<uint8_t>(xml.begin(), xml.end());
   }
 #endif
-  return encode_svg(chart.render());
+  std::string xml = detail::build_chart_svg(chart);
+  if (!xml.empty())
+    return std::vector<uint8_t>(xml.begin(), xml.end());
+  return encode_svg(chart.render()); // chart type without a vector path (scatter)
 }
 
 class SupersampleScope {

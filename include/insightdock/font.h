@@ -136,6 +136,17 @@ public:
   /** @brief Line height in pixels at current font size. */
   float line_height() const;
 
+  /**
+   * @brief Distance from the alphabetic baseline up to the anchor for @p baseline, in pixels.
+   *
+   * `draw_text` places the alphabetic baseline at `y + baseline_offset(baseline)`; vector
+   * targets use the same value so text sits where the raster output puts it.
+   */
+  float baseline_offset(TextBaseline baseline) const;
+
+  /** @brief Ascent in pixels (distance from baseline to the top of the em box). */
+  float ascent() const;
+
   /** @brief Width and height of a text string at an explicit pixel size. */
   struct TextMetrics {
     float width = 0.0f;  ///< Pixel width of the string.
@@ -152,7 +163,6 @@ public:
 
 private:
   bool init_font();
-  float baseline_offset(TextBaseline baseline) const;
   int resolve_glyph(int codepoint) const;
   void blit_rotated(ImageBuffer &buffer, float cx, float cy, std::string const &text,
                     Color const &color, bool clockwise) const;
