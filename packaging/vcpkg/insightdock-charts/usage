@@ -1,0 +1,4 @@
+insightdock-charts provides CMake targets:
+
+    find_package(InsightDock CONFIG REQUIRED)
+    target_link_libraries(main PRIVATE InsightDock::Charts)

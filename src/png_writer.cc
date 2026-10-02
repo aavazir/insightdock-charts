@@ -3,6 +3,8 @@
 
 #include "insightdock/png_writer.h"
 
+// On Windows, treat `path` as UTF-8 (stb converts to wide chars) instead of the ANSI code page.
+#define STBIW_WINDOWS_UTF8
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "../third_party/stb_image_write.h"
 

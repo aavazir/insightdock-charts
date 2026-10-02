@@ -15,6 +15,12 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 include(GNUInstallDirs)
 
+# Windows has no RPATH: put the DLL and every executable (tests, examples) in one directory so a
+# shared build runs straight from the build tree.
+if(WIN32 AND NOT CMAKE_RUNTIME_OUTPUT_DIRECTORY)
+  set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+endif()
+
 option(INSIGHTDOCK_BUILD_EXAMPLES "Build generic example programs" ON)
 option(INSIGHTDOCK_WITH_PODOFO "Build PoDoFo PDF adapter and PDF examples" OFF)
 option(INSIGHTDOCK_BUILD_TESTS "Build and register CTest smoke tests" ON)
@@ -92,13 +98,18 @@ target_include_directories(InsightDockCharts PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/third_party
 )
 
-if(INSIGHTDOCK_WERROR)
-  if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-    target_compile_options(InsightDockCharts PRIVATE -Wall -Wextra -Werror)
+if(MSVC)
+  # /utf-8: source and execution charset UTF-8 (string literals carry UTF-8 test text).
+  target_compile_options(InsightDockCharts PRIVATE /W4 /utf-8 /permissive-)
+  if(INSIGHTDOCK_WERROR)
+    target_compile_options(InsightDockCharts PRIVATE /WX)
   endif()
-else()
-  if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-    target_compile_options(InsightDockCharts PRIVATE -Wall -Wextra)
+  # Consumers' string literals are UTF-8 too; don't force it on them, but keep CRT noise out.
+  target_compile_definitions(InsightDockCharts PRIVATE _CRT_SECURE_NO_WARNINGS)
+elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+  target_compile_options(InsightDockCharts PRIVATE -Wall -Wextra)
+  if(INSIGHTDOCK_WERROR)
+    target_compile_options(InsightDockCharts PRIVATE -Werror)
   endif()
 endif()
 

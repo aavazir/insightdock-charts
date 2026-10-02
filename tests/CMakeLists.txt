@@ -24,8 +24,18 @@ set_tests_properties(unit_tests PROPERTIES WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
 
 add_executable(insightdock_gallery_regression gallery_regression.cc)
 target_link_libraries(insightdock_gallery_regression PRIVATE InsightDock::Charts)
+target_include_directories(insightdock_gallery_regression PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 add_test(NAME gallery_regression COMMAND insightdock_gallery_regression
   ${CMAKE_CURRENT_SOURCE_DIR}/../docs/gallery)
 set_tests_properties(gallery_regression PROPERTIES
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/..)
+
+# --- find_package consumer: install to a scratch prefix, build + run an out-of-tree program ---
+add_test(NAME find_package_consumer
+  COMMAND ${CMAKE_COMMAND}
+    -DBUILD_DIR=${CMAKE_BINARY_DIR}
+    -DSOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}/consumer
+    -DWORK_DIR=${CMAKE_BINARY_DIR}/consumer-test
+    -DCONFIG=$<CONFIG>
+    -P ${CMAKE_CURRENT_SOURCE_DIR}/consumer/run.cmake)

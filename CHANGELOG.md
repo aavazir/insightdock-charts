@@ -6,6 +6,15 @@ Format based on [Keep a Changelog](https://keepachangelog.com/). Versioning foll
 
 ## [Unreleased]
 
+### Phase E — platforms and packaging
+- **CI matrix** — Windows (MSVC, static and DLL), macOS and a shared-library Linux build, in addition to x86-64 and ARM64 Linux. (Added without a local MSVC/macOS run; the first GitHub run is the real test.)
+- **MSVC build flags** — `/W4 /utf-8 /permissive-`, `/WX` under `INSIGHTDOCK_WERROR`; on Windows the DLL and all executables share one output directory so shared builds run from the build tree.
+- **Gallery regression** compares decoded pixels (≤ 8 per channel, ≤ 0.1 % of pixels) instead of encoded PNG bytes, so it no longer depends on the zlib/FPU of one platform. Test-only `tests/third_party/stb_image.h` (never shipped).
+- **Automated `find_package` consumer test** (`find_package_consumer` in CTest): installs the build to a scratch prefix and builds and runs an out-of-tree program, for static and shared builds.
+- **Windows paths** — `STBIW_WINDOWS_UTF8` for PNG/JPEG output and a UTF-8-safe `Font::load_from_file`.
+- **vcpkg port** under `packaging/vcpkg/insightdock-charts` (features `font-latin`, `podofo`); `SHA512` is a placeholder until the first tag exists.
+- **`scripts/check_version.sh`** (CI job `version-consistency`) fails if CMake, OpenWrt `PKG_VERSION` and the vcpkg port disagree.
+
 ### Phase D — chart features
 - **Step lines** — `LineChartOptions::step` / `AreaChartOptions::step` (`StepMode::After`, `Before`, `Middle`).
 - **100%-stacked** bar (`BarMode::Stacked100`, vertical and horizontal) and area (`AreaChartOptions::stacked_percent`): the value axis is fixed at 0–100% and labelled with `%` automatically.

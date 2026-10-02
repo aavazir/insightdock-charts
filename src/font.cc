@@ -19,6 +19,9 @@
 #include <cmath>
 #include <cstring>
 #include <fstream>
+#ifdef _WIN32
+#include <filesystem>
+#endif
 
 namespace insightdock::charts {
 
@@ -84,7 +87,14 @@ int next_codepoint(std::string const &text, std::size_t &i) {
 FontDataPtr load_font_data(char const *path) {
   if (!path)
     return nullptr;
+#ifdef _WIN32
+  // The narrow ifstream overload uses the ANSI code page; u8path makes a UTF-8 path open
+  // correctly. Guarded so POSIX/embedded builds don't pull in <filesystem> (libstdc++fs on old
+  // toolchains).
+  std::ifstream ifs(std::filesystem::u8path(path), std::ios::binary);
+#else
   std::ifstream ifs(path, std::ios::binary);
+#endif
   if (!ifs)
     return nullptr;
   auto data = std::make_shared<FontData>(std::istreambuf_iterator<char>(ifs),

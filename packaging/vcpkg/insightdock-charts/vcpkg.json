@@ -1,0 +1,29 @@
+{
+  "name": "insightdock-charts",
+  "version": "0.7.0",
+  "description": "Headless C++17 charting library: pie, bar, line, area, combo and scatter charts to PNG, JPEG, SVG and PDF.",
+  "homepage": "https://github.com/avazir/insightdock",
+  "license": "MIT",
+  "supports": "!uwp",
+  "dependencies": [
+    {
+      "name": "vcpkg-cmake",
+      "host": true
+    },
+    {
+      "name": "vcpkg-cmake-config",
+      "host": true
+    }
+  ],
+  "features": {
+    "font-latin": {
+      "description": "Embed a Latin-1/Latin-Extended-A font subset instead of the ASCII-only one"
+    },
+    "podofo": {
+      "description": "Native vector PDF export via PoDoFo",
+      "dependencies": [
+        "podofo"
+      ]
+    }
+  }
+}

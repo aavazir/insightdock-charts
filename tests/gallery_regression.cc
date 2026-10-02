@@ -4,6 +4,10 @@
 #include "insightdock/charts.h"
 #include "insightdock/decimate.h"
 
+#define STB_IMAGE_IMPLEMENTATION
+#define STBI_ONLY_PNG
+#include "third_party/stb_image.h"
+
 #include <cstdio>
 #include <cstdlib>
 #include <fstream>
@@ -39,24 +43,42 @@ bool write_file(std::string const &path, std::vector<uint8_t> const &data) {
   return static_cast<bool>(out);
 }
 
-bool png_pixel_diff(std::vector<uint8_t> const &a, std::vector<uint8_t> const &b,
-                    double max_ratio) {
-  if (a == b)
-    return true;
-  if (a.size() != b.size() || a.size() < 8)
+// Decoded-pixel comparison. Comparing encoded PNG bytes would tie the test to one zlib/FPU
+// combination; MSVC and ARM64 legitimately differ by a rounding step in anti-aliased edges.
+// Pass when at most 0.1% of pixels differ by more than 8 in any channel.
+bool pixels_match(insightdock::charts::ImageBuffer const &img,
+                  std::vector<uint8_t> const &ref_png) {
+  int w = 0, h = 0, n = 0;
+  unsigned char *ref =
+      stbi_load_from_memory(ref_png.data(), static_cast<int>(ref_png.size()), &w, &h, &n, 4);
+  if (!ref)
     return false;
-  std::size_t diffs = 0;
-  for (std::size_t i = 0; i < a.size(); ++i) {
-    if (a[i] != b[i])
-      ++diffs;
+  bool ok =
+      static_cast<std::size_t>(w) == img.width() && static_cast<std::size_t>(h) == img.height();
+  if (ok) {
+    auto const &px = img.data();
+    std::size_t total = static_cast<std::size_t>(w) * static_cast<std::size_t>(h);
+    std::size_t bad = 0;
+    for (std::size_t i = 0; i < total; ++i) {
+      for (int c = 0; c < 4; ++c) {
+        int d = static_cast<int>(px[i * 4 + c]) - static_cast<int>(ref[i * 4 + c]);
+        if (d > 8 || d < -8) {
+          ++bad;
+          break;
+        }
+      }
+    }
+    ok = static_cast<double>(bad) / static_cast<double>(total) <= 0.001;
   }
-  return static_cast<double>(diffs) / static_cast<double>(a.size()) <= max_ratio;
+  stbi_image_free(ref);
+  return ok;
 }
 
 void check_chart(std::string const &name, insightdock::charts::Chart &chart,
                  std::string const &ref_dir, bool update) {
   std::string path = ref_dir + "/" + name;
-  auto png = insightdock::charts::encode_png(chart.render());
+  auto img = chart.render();
+  auto png = insightdock::charts::encode_png(img);
   if (png.empty()) {
     fail((name + " render failed").c_str());
     return;
@@ -77,7 +99,7 @@ void check_chart(std::string const &name, insightdock::charts::Chart &chart,
     return;
   }
 
-  if (!png_pixel_diff(png, ref, 0.001)) {
+  if (!pixels_match(img, ref)) {
     fail((name + " differs from reference").c_str());
   }
 }
