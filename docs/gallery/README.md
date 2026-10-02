@@ -29,3 +29,11 @@ PDF samples (PoDoFo required):
 |------|--------|
 | `chart_report.pdf` | `podofo_report_example` |
 | `pie_vector.pdf` | `podofo_report_example` |
+
+## Vector output sample
+
+`vector_vs_matplotlib.png` shows the same grouped bar chart as a vector PDF from InsightDock and from
+Matplotlib 3.10 (pages rasterised with `pdftoppm` for the preview). `insightdock_bar.svg` is the native
+SVG. For the InsightDock PDF, `pdfimages -list` shows no embedded images, so bars and text are real
+vector objects. PDFs are git-ignored, so regenerate them with a PoDoFo build. The comparison is of
+output style only; it makes no claim about speed or quality.
