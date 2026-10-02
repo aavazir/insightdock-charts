@@ -23,7 +23,7 @@ jobs:
       - name: Generate MrDocs API reference
         run: ./scripts/ci_docs_mrdocs.sh
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.x"
 
