@@ -85,7 +85,7 @@ Release candidate for 1.0. The API is frozen for the feedback window except for 
 ### Changed
 
 - **`-DBUILD_SHARED_LIBS=ON` + `-DINSIGHTDOCK_WITH_PODOFO=ON` verified end-to-end on OpenWrt** (x86_64/musl toolchain): `find_package(podofo CONFIG)` resolves, `libinsightdock.so` links against PoDoFo, and headers/CMake export/`.so` all stage correctly for downstream packages.
-- **Removed all company-internal code and CI in preparation for open-source release** — deleted `fuse/` (company samples/data/assets) and `.gitlab-ci.yml`; added GitHub Actions CI (`.github/workflows/ci.yml`: lint, clang-tidy, build-and-test, sanitizers; `.github/workflows/docs.yml`: MrDocs + MkDocs site published to GitHub Pages) and standard GitHub OSS scaffolding (`CODE_OF_CONDUCT.md`, issue/PR templates). CMake/Makefile output filename is `libinsightdock.a`/`.so` (single build, no internal/OSS naming split).
+- **Repository prepared for open-source release** — removed non-public sample code and the previous CI configuration; added GitHub Actions CI (`.github/workflows/ci.yml`: lint, clang-tidy, build-and-test, sanitizers; `.github/workflows/docs.yml`: MrDocs + MkDocs site published to GitHub Pages) and standard GitHub OSS scaffolding (`CODE_OF_CONDUCT.md`, issue/PR templates). CMake/Makefile output filename is `libinsightdock.a`/`.so`.
 - **Embedded font subset regenerated to cover full printable ASCII** (`include/insightdock/embedded_font.h`) — the previous subset was missing glyphs for 20 punctuation codepoints, including `$`, `!`, `"`, `#`, `'`, `*`, `;`, `=`, `?`, `@`, brackets, backslash, backtick, braces, `|`, and `~` (each silently rendered as blank space via a `.notdef` glyph — not caught by `Font::draw_text`/`measure_width`'s range check, which only validates the codepoint is in `[32,127]`, not that the font actually maps it). Traced the embedded binary to DejaVu Sans via its TTF name table and regenerated the subset with `fonttools`' `pyftsubset --unicodes="U+0020-007E"` from a full DejaVu Sans install; all 95 printable-ASCII codepoints now resolve to a real glyph (verified with a standalone `stbtt_FindGlyphIndex` sweep). New subset is also smaller (~9.3 KB vs ~21 KB). `NOTICE` updated with accurate DejaVu Sans / Bitstream-Vera-derived license attribution (previously a vague "verify font license before redistribution" placeholder). `docs/gallery/*.png` baselines regenerated (`UPDATE_GALLERY=1`) since text metrics shifted slightly with the new subset.
 - **CMake `find_package(InsightDock)` now exports the target as `InsightDock::Charts`** (previously `InsightDock::InsightDockCharts`) — added `EXPORT_NAME Charts` to the library target. The in-tree `InsightDock::Charts` ALIAS masked this for anyone building this repo directly; every out-of-tree consumer following the README's own `find_package` example hit a `target_link_libraries` "target was not found" configure error. Verified with a clean `cmake --install` to a temp prefix followed by a throwaway consumer project that configures, builds, links, and runs.
 
@@ -197,7 +197,7 @@ Release candidate for 1.0. The API is frozen for the feedback window except for 
 
 ## [0.3.0] — prior release
 
-- Captive Portal PDF example, vector PoDoFo pies, Tableau-10 palette
+- PDF report example, vector PoDoFo pies, Tableau-10 palette
 
 [0.7.0]: https://github.com/avazir/insightdock/releases/tag/v0.7.0
 [0.6.0]: https://github.com/avazir/insightdock/releases/tag/v0.6.0

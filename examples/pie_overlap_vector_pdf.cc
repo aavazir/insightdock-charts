@@ -26,7 +26,7 @@ int main() {
   opts.resolve_label_overlap = false;
   insightdock::charts::podofo::PdfVectorFonts fonts{&font, &font};
 
-  // Same chart box size as captive_portal_report (92 mm x 82 mm).
+  // Chart box of 92 mm x 82 mm.
   constexpr double pt_per_mm = 72.0 / 25.4;
   constexpr double chart_w_mm = 92.0;
   constexpr double chart_h_mm = 82.0;

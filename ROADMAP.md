@@ -216,7 +216,7 @@ Identified during a v1-scope audit of the existing chart types against commonly-
 
 Do not publish to GitHub until every item here is checked. This is the public first-impression checklist.
 
-- [x] Company-internal code and CI (`fuse/`, GitLab CI) removed entirely from the repo
+- [x] Non-public sample code and previous CI configuration removed from the repo
 - [ ] GitHub repo created — `avazir/insightdock` (personal account, not a separate org)
 - [x] GitHub Actions CI (build, test, sanitizers, clang-tidy, MrDocs) — `.github/workflows/ci.yml`, `.github/workflows/docs.yml`
 - [ ] vcpkg port submitted (`insightdock-charts`) — primary Windows and CMake install path
