@@ -37,7 +37,7 @@ forwarders onto the same struct.
 
 | Field | Default | Purpose |
 |---|---|---|
-| `mode` | `BarMode::Grouped` | `Grouped` or `Stacked`. |
+| `mode` | `BarMode::Grouped` | `Grouped`, `Stacked`, or `Stacked100` (each category normalised to 100%, see below). |
 | `orientation` | `BarOrientation::Vertical` | `Vertical` (default) or `Horizontal` — see below. |
 | `group_gap` | `0.2` | Gap between category groups, as a fraction of slot width, `[0, 0.5]`. |
 | `bar_gap` | `0.1` | Gap between bars within a group (grouped mode only), `[0, 0.5]`. |
@@ -70,9 +70,23 @@ bar.add_series("Revenue", {320, 280, 410, 150, 95});
 
 The left margin widens automatically to fit the longest category label. Grouped and stacked modes
 both work in horizontal orientation. Not available on `ComboChart` (its line-series geometry has
-no horizontal equivalent), and `ReferenceLine`/`ReferenceBand` overlays are not drawn in horizontal
-mode in v1 — their orientation semantics assume a vertical value axis, so `BarChart` silently skips
-them rather than rendering them scrambled.
+no horizontal equivalent).
+
+`ReferenceLine`/`ReferenceBand` keep their meaning relative to the axes: `Horizontal` is a constant
+*value* (so it is drawn as a vertical line here), `Vertical` is a category position (drawn as a
+horizontal line).
+
+## 100% stacked
+
+```cpp
+bar.set_mode(BarMode::Stacked100);
+```
+
+Every category is normalised so its segments add up to 100%, which shows each series' *share*
+instead of its magnitude. The value axis is fixed at 0–100% and is labelled with `%`
+automatically (set `y_tick_format` or `custom_y_formatter` to override). Negative and missing
+values count as 0, and a category whose total is not positive is left empty. Data labels still
+show the original values. Works in horizontal orientation too.
 
 ## Shared `CartesianOptions`
 
@@ -154,7 +168,6 @@ launch.label = "Launch";
 bar.cartesian_options().reference_lines.push_back(launch);
 ```
 
-Not available on `PieChart`/`ScatterChart` — they have no `draw_overlay()` hook to attach to — nor
-on `BarChart` in horizontal orientation (see above). For
+Not available on `PieChart`/`ScatterChart` — they have no `draw_overlay()` hook to attach to. For
 anything beyond a straight threshold line/band, `draw_overlay` is still the extension point — see
 [Concepts → Extending](../concepts.md#extending-the-draw_overlay-hook).

@@ -19,7 +19,13 @@ namespace insightdock::charts {
 /** @brief How multiple series are drawn within each category. */
 enum class BarMode {
   Grouped, ///< Side-by-side bars per category.
-  Stacked  ///< Bars stacked vertically per category.
+  Stacked, ///< Bars stacked vertically per category.
+  /**
+   * Stacked and normalised: every category sums to 100%, so the bars show each series' share.
+   * The value axis runs 0-100%; negative and missing values count as 0, and a category whose
+   * total is not positive is left empty. Data labels still show the original values.
+   */
+  Stacked100
 };
 
 /** @brief Bar direction. */
@@ -27,9 +33,10 @@ enum class BarOrientation {
   Vertical,  ///< Bars rise from a horizontal category axis (default).
   Horizontal ///< Bars extend from a vertical category axis on the left — rankings,
              ///< leaderboards, long category names. Not available on ComboChart, whose
-             ///< line-series geometry has no horizontal-orientation equivalent; also
-             ///< doesn't support @ref ReferenceLine / @ref ReferenceBand overlays in v1
-             ///< (their orientation semantics assume a vertical value axis).
+             ///< line-series geometry has no horizontal-orientation equivalent.
+             ///< @ref ReferenceLine / @ref ReferenceBand keep their meaning relative to the axes:
+             ///< `Horizontal` = a constant value (drawn as a vertical line here), `Vertical` = a
+             ///< category position (drawn as a horizontal line).
 };
 
 /** @brief Layout, shape, and label options for BarChart (and reused by ComboChart's bars). */
@@ -112,6 +119,9 @@ protected:
   void draw_series(PlotContext &ctx) const override;
   void draw_overlay(PlotContext &ctx) const override;
   double compute_y_max() const override;
+  bool y_axis_is_percent() const override {
+    return bar_opts_.mode == BarMode::Stacked100;
+  }
   bool is_horizontal() const override {
     return bar_opts_.orientation == BarOrientation::Horizontal;
   }

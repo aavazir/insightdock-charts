@@ -6,6 +6,7 @@
 #include "insightdock/detail/reference_lines.h"
 #include "insightdock/detail/series_runs.h"
 #include "insightdock/detail/spline.h"
+#include "insightdock/detail/step.h"
 #include "insightdock/detail/tick_format.h"
 #include "insightdock/font.h"
 
@@ -46,7 +47,9 @@ void LineChart::draw_series(PlotContext &ctx) const {
       // Points remain at the raw per-category positions for markers/labels; the spline
       // curve (if enabled) is a separate, denser point list used only for the stroke/fill.
       std::vector<std::pair<float, float>> curve_pts =
-          line_opts_.spline ? detail::catmull_rom_expand(run.pts) : run.pts;
+          line_opts_.step != StepMode::None
+              ? detail::expand_steps(run.pts, line_opts_.step)
+              : (line_opts_.spline ? detail::catmull_rom_expand(run.pts) : run.pts);
 
       if (line_opts_.fill_area && curve_pts.size() >= 2) {
         std::vector<std::pair<float, float>> poly = curve_pts;

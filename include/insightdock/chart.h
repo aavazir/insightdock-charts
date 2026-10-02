@@ -14,6 +14,7 @@
 #include "insightdock/export_macros.h"
 #include "insightdock/font.h"
 #include "insightdock/image_buffer.h"
+#include "insightdock/palette.h"
 #include "insightdock/series_style.h"
 #include "insightdock/theme.h"
 #include <cstddef>
@@ -62,6 +63,8 @@ struct ChartOptions {
    * @ref load_font_data; the bytes are shared, so many charts can reuse one font cheaply.
    */
   FontDataPtr font;
+  /** Color cycle for series added without an explicit color (bar/line/area/combo/scatter). */
+  PaletteKind palette = PaletteKind::ChartJs;
 };
 
 /**

@@ -47,3 +47,20 @@ chart.options().font = font;
 | `Truncate` | Every label is drawn horizontally, shortened with `...` to fit its slot. |
 
 `max_x_labels` still caps the number of labels in every mode.
+
+## Multi-line text
+
+Chart titles, category labels and the x-axis title may contain `\n`:
+
+```cpp
+chart.options().title = "Revenue by quarter\n(thousands of USD)";
+chart.set_categories({"Q1\n2024", "Q2\n2024"});
+```
+
+Each line is centred on its own width, and the title / label margins grow to fit. Y-axis
+titles and legend entries are single-line.
+
+## Colorblind-safe palette
+
+`chart.options().palette = PaletteKind::ColorblindSafe;` selects the 8-colour Okabe–Ito palette
+for series added afterwards without an explicit color (set it before `add_series`).

@@ -23,6 +23,8 @@ struct LineChartOptions {
   float point_radius = 4.0f; ///< Point marker radius in pixels.
   /** Cubic (Catmull-Rom) interpolation between points instead of straight segments. */
   bool spline = false;
+  /** Staircase instead of straight segments (takes precedence over @p spline). */
+  StepMode step = StepMode::None;
   /** Alternating on/off stroke lengths in pixels; empty (default) = solid. */
   DashPattern dash;
   /** Marker shape drawn at each point when show_points is true. */

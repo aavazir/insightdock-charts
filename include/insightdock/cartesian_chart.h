@@ -35,8 +35,8 @@ enum class TickFormat {
 
 /** @brief Which axis a @ref ReferenceLine or @ref ReferenceBand is measured against. */
 enum class ReferenceOrientation {
-  Horizontal, ///< A constant y-value line/band (e.g. an SLA threshold).
-  Vertical    ///< A constant x-position line/band, in fractional category-index units.
+  Horizontal, ///< A constant value-axis line/band (e.g. an SLA threshold).
+  Vertical    ///< A constant category-position line/band, in fractional category-index units.
 };
 
 /**
@@ -311,6 +311,12 @@ protected:
   virtual double compute_y_min() const;
   /** @brief Maximum y value for scale (default: data max with padding). */
   virtual double compute_y_max() const;
+  /** @brief True when the primary value axis is a 0-100 share (100%-stacked charts); labels get `%`. */
+  virtual bool y_axis_is_percent() const {
+    return false;
+  }
+  /** @brief Primary value-axis tick label (honours @ref y_axis_is_percent and the formatters). */
+  std::string y_tick_label(double v, PlotContext const &ctx) const;
 
   /**
    * @brief Whether to render a secondary (right-side) y-axis. Default: false.

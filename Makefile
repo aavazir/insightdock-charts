@@ -58,7 +58,7 @@ ifneq ($(filter bar line area,$(CHART_TYPES)),)
   SRCS += src/cartesian_chart.cc
 endif
 ifneq ($(filter bar,$(CHART_TYPES)),)
-  SRCS     += src/bar_chart.cc
+  SRCS     += src/bar_chart.cc src/histogram.cc
 endif
 ifneq ($(filter line,$(CHART_TYPES)),)
   SRCS     += src/line_chart.cc

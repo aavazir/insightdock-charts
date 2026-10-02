@@ -60,6 +60,7 @@ nav:
       - Line: chart-types/line.md
       - Area: chart-types/area.md
       - Combo: chart-types/combo.md
+      - Histogram: chart-types/histogram.md
       - Scatter & bubble: chart-types/scatter.md
   - Examples: examples.md
   - API Reference: api/index.html

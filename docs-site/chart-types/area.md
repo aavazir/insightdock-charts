@@ -28,6 +28,8 @@ Accessed via `area.area_options()`:
 | Option | Default | Purpose |
 |---|---|---|
 | `stacked` | `false` | Stack series polygons instead of overlapping them. |
+| `stacked_percent` | `false` | 100%-stacked: every category is normalised to 100% and the axis runs 0–100%. Implies stacking; negative/missing values count as 0. |
+| `step` | `StepMode::None` | Staircase edges (`After`, `Before`, `Middle`) instead of straight segments; takes precedence over `spline`. |
 | `show_line` | `true` | Draw a stroke on top of each filled area. |
 | `line_width` | `2.0` | Stroke width in pixels, when `show_line` is true. |
 | `spline` | `false` | Catmull-Rom cubic interpolation for both the fill and the stroke edge. |

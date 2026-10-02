@@ -34,7 +34,7 @@ void ScatterChart::add_series(std::string label, std::vector<ScatterPoint> point
   ScatterSeries s;
   s.label = std::move(label);
   s.points = std::move(points);
-  s.color = palette_color(series_.size());
+  s.color = palette_color_by_kind(options_.palette, series_.size());
   series_.push_back(std::move(s));
 }
 

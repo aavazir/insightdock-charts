@@ -6,6 +6,16 @@ Format based on [Keep a Changelog](https://keepachangelog.com/). Versioning foll
 
 ## [Unreleased]
 
+### Phase D — chart features
+- **Step lines** — `LineChartOptions::step` / `AreaChartOptions::step` (`StepMode::After`, `Before`, `Middle`).
+- **100%-stacked** bar (`BarMode::Stacked100`, vertical and horizontal) and area (`AreaChartOptions::stacked_percent`): the value axis is fixed at 0–100% and labelled with `%` automatically.
+- **Histogram** — `compute_histogram()` and `make_histogram_chart()` (`insightdock/histogram.h`), a `BarChart` preset with touching bars.
+- **Colorblind-safe palette** — `PaletteKind::ColorblindSafe` (Okabe–Ito) and the new `ChartOptions::palette`, which selects the color cycle for series added without an explicit color.
+- **Reference lines and bands now work in horizontal bar charts** (previously skipped silently): `Horizontal` means a constant value (drawn vertically there), `Vertical` a category position.
+- **Multi-line text** — chart titles, category labels and the x-axis title may contain `\n`; each line is aligned independently and the margins grow to fit.
+- Non-finite values in stacked bars now count as 0 (they used to poison the stack).
+- Not in 1.0: error bars (see ROADMAP).
+
 ### Phase C — native vector output
 - **Native vector SVG and PDF for bar, line, area and combo charts** (grouped/stacked/horizontal bars, splines, per-series dash and markers, translucent fills, data labels, reference lines/bands, secondary axis, rotated axis titles, legend). `ExportOptions::svg_backend = SvgBackend::Vector` and `pdf_backend = PdfBackend::Vector` now apply to every Cartesian chart; only scatter still embeds a raster. Selectable text, scales to any size. New guide: *Vector export*.
 - **`DrawTarget`** (`include/insightdock/draw_target.h`) — pixel-space drawing interface that Cartesian charts render through, with `RasterTarget` (PNG/JPEG; gallery output is byte-identical), `detail::SvgTarget` and `podofo::PdfTarget`. `Chart::draw(DrawTarget&)` is a new virtual (default returns `false`; all Cartesian charts implement it).

@@ -31,6 +31,7 @@ Accessed via `line.line_options()` (mutable reference, so set fields directly):
 | `line_width` | `2.0` | Stroke width in pixels. |
 | `point_radius` | `4.0` | Point marker radius in pixels. |
 | `spline` | `false` | Catmull-Rom cubic interpolation between points instead of straight segments. |
+| `step` | `StepMode::None` | Staircase instead of straight segments: `After` (hold, then jump), `Before` (jump, then hold) or `Middle`. Takes precedence over `spline`. Markers stay on the data points. |
 | `dash` | empty (solid) | Alternating on/off stroke lengths in pixels, e.g. `{6, 4}`. Chart-wide default; override per series with `SeriesStyle`. |
 | `point_shape` | `PointMarkerShape::Circle` | `Circle`, `Square`, `Triangle`, or `Cross`. Chart-wide default; override per series. |
 | `gap_policy` | `GapPolicy::Gap` | How NaN/Inf/missing values are drawn: `Gap` breaks the line, `Interpolate` joins the neighbours, `Zero` plots 0. |

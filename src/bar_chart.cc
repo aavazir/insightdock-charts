@@ -13,6 +13,8 @@
 namespace insightdock::charts {
 
 double BarChart::compute_y_max() const {
+  if (bar_opts_.mode == BarMode::Stacked100)
+    return 100.0;
   if (bar_opts_.mode != BarMode::Stacked)
     return CartesianChart::compute_y_max();
 
@@ -32,25 +34,46 @@ double BarChart::compute_y_max() const {
   return ymax;
 }
 
+namespace {
+
+// Factor mapping a category's raw values to its stacked extents: 1 for plain stacking, or
+// 100/total for 100%-stacked (0 when the category has nothing positive to show).
+double stack_scale(std::vector<DataSeries> const &series, std::size_t ci, bool percent) {
+  if (!percent)
+    return 1.0;
+  double total = 0.0;
+  for (auto const &s : series) {
+    if (ci < s.values.size() && std::isfinite(s.values[ci]) && s.values[ci] > 0.0)
+      total += s.values[ci];
+  }
+  return total > 0.0 ? 100.0 / total : 0.0;
+}
+
+// The value a stacked segment contributes (non-finite is 0; negatives are 0 when normalising).
+double stack_value(DataSeries const &ser, std::size_t ci, bool percent) {
+  double v = ci < ser.values.size() ? ser.values[ci] : 0.0;
+  if (!std::isfinite(v))
+    return 0.0;
+  return (percent && v < 0.0) ? 0.0 : v;
+}
+
+} // namespace
+
 void BarChart::draw_series(PlotContext &ctx) const {
   if (bar_opts_.orientation == BarOrientation::Horizontal) {
-    if (bar_opts_.mode == BarMode::Stacked)
+    if (bar_opts_.mode != BarMode::Grouped)
       draw_stacked_horizontal(ctx);
     else
       draw_grouped_horizontal(ctx);
     return;
   }
-  if (bar_opts_.mode == BarMode::Stacked)
+  if (bar_opts_.mode != BarMode::Grouped)
     draw_stacked(ctx);
   else
     draw_grouped(ctx);
 }
 
 void BarChart::draw_overlay(PlotContext &ctx) const {
-  // ReferenceLine/ReferenceBand orientation assumes a vertical value axis; not
-  // supported in horizontal mode (v1) — see BarOrientation::Horizontal.
-  if (bar_opts_.orientation == BarOrientation::Horizontal)
-    return;
   detail::draw_reference_lines(ctx);
 }
 
@@ -111,13 +134,15 @@ void BarChart::draw_stacked(PlotContext &ctx) const {
   if (bar_opts_.data_labels.enabled)
     label_font.set_size(bar_opts_.data_labels.font_size);
 
+  bool percent = bar_opts_.mode == BarMode::Stacked100;
   for (std::size_t ci = 0; ci < ncat; ++ci) {
     float bx = ctx.plot.left() + slot * static_cast<float>(ci) + slot * bar_opts_.group_gap * 0.5f;
     double stack = 0.0;
+    double k = stack_scale(ctx.series, ci, percent);
     for (auto const &ser : ctx.series) {
-      double val = (ci < ser.values.size()) ? ser.values[ci] : 0.0;
+      double val = stack_value(ser, ci, percent);
       double y1 = stack;
-      double y2 = stack + val;
+      double y2 = stack + val * k;
       float py_top = ctx.y_scale.to_pixel(y2);
       float py_bot = ctx.y_scale.to_pixel(y1);
       float top = std::min(py_top, py_bot);
@@ -192,13 +217,15 @@ void BarChart::draw_stacked_horizontal(PlotContext &ctx) const {
   if (bar_opts_.data_labels.enabled)
     label_font.set_size(bar_opts_.data_labels.font_size);
 
+  bool percent = bar_opts_.mode == BarMode::Stacked100;
   for (std::size_t ci = 0; ci < ncat; ++ci) {
     float by = ctx.plot.top() + slot * static_cast<float>(ci) + slot * bar_opts_.group_gap * 0.5f;
     double stack = 0.0;
+    double k = stack_scale(ctx.series, ci, percent);
     for (auto const &ser : ctx.series) {
-      double val = (ci < ser.values.size()) ? ser.values[ci] : 0.0;
+      double val = stack_value(ser, ci, percent);
       double x1 = stack;
-      double x2 = stack + val;
+      double x2 = stack + val * k;
       float px_end = ctx.y_scale.to_pixel(x2);
       float px_start = ctx.y_scale.to_pixel(x1);
       float left = std::min(px_end, px_start);

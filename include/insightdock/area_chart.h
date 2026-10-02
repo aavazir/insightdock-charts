@@ -18,10 +18,17 @@ namespace insightdock::charts {
 /** @brief Area-specific drawing options. */
 struct AreaChartOptions {
   bool stacked = false;    ///< Stack series polygons instead of overlapping.
+  /**
+   * 100%-stacked: every category is normalised to 100, so the chart shows each series' share.
+   * Implies stacking; the y-axis runs 0-100% and a category whose total is not positive is empty.
+   */
+  bool stacked_percent = false;
   bool show_line = true;   ///< Draw stroke on top of each area.
   float line_width = 2.0f; ///< Stroke width when @p show_line is true.
   /** Cubic (Catmull-Rom) interpolation between points instead of straight segments. */
   bool spline = false;
+  /** Staircase instead of straight segments (takes precedence over @p spline). */
+  StepMode step = StepMode::None;
   /** Alternating on/off stroke lengths in pixels for the top edge; empty = solid. */
   DashPattern dash;
   /** Point markers at each data point along the top edge; off by default (Chart.js-style). */
@@ -54,6 +61,9 @@ public:
 protected:
   void draw_series(PlotContext &ctx) const override;
   double compute_y_max() const override;
+  bool y_axis_is_percent() const override {
+    return area_opts_.stacked_percent;
+  }
   void draw_overlay(PlotContext &ctx) const override;
   bool supports_continuous_x_axis() const override {
     return true;

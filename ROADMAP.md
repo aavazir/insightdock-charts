@@ -234,8 +234,9 @@ Do not publish to GitHub until every item here is checked. This is the public fi
 ## Phase 1 — Chart breadth (post-OSS, ChartDirector parity goal)
 
 - [ ] Error bars (x and y; works with bar, scatter, line)
-- [x] Spline / cubic-interpolated lines (`LineChartOptions`/`AreaChartOptions`/`ComboLineOptions::spline`, Catmull-Rom via `detail::catmull_rom_expand()`) — pulled forward into the Chart.js/amCharts visual-polish pass; step lines remain open
-- [ ] Step lines (option on `LineChartOptions`)
+- [x] Spline / cubic-interpolated lines (`LineChartOptions`/`AreaChartOptions`/`ComboLineOptions::spline`, Catmull-Rom via `detail::catmull_rom_expand()`) — pulled forward into the Chart.js/amCharts visual-polish pass
+- [x] Step lines (`LineChartOptions::step` / `AreaChartOptions::step`) — done in Phase D
+- [x] 100%-stacked bar and area (`BarMode::Stacked100`, `AreaChartOptions::stacked_percent`), histogram (`make_histogram_chart`), colorblind-safe palette (`PaletteKind::ColorblindSafe`), reference lines in horizontal bars, multi-line titles/labels — done in Phase D
 - [ ] Box-whisker chart
 - [ ] Heatmap (2D grid, color-mapped; requires `ImageBuffer` color-scale helper)
 - [ ] Polar / radar chart

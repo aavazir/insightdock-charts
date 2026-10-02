@@ -8,6 +8,7 @@
 #include "insightdock/charts.h"
 #include "insightdock/detail/marker.h"
 #include "insightdock/detail/spline.h"
+#include "insightdock/detail/step.h"
 #include "insightdock/detail/tick_format.h"
 #include "insightdock/error.h"
 #include "insightdock/svg_writer.h"
@@ -1671,27 +1672,182 @@ static void test_bar_chart_horizontal_bar_length_reflects_value() {
   CHECK(large_x > small_x);
 }
 
-static void test_bar_chart_horizontal_ignores_reference_lines() {
-  // ReferenceLine orientation assumes a vertical value axis; horizontal mode must
-  // silently skip them (documented v1 scope limit) rather than draw them scrambled.
+static void test_bar_chart_horizontal_reference_line_is_vertical() {
+  // In a horizontal bar chart the value axis runs left-to-right, so a "constant value" reference
+  // line (ReferenceOrientation::Horizontal) must be drawn as a vertical line.
   auto make = [](bool with_ref_line) {
     BarChart chart;
     chart.options().width = 300;
     chart.options().height = 200;
+    chart.options().legend.enabled = false;
     chart.bar_options().orientation = BarOrientation::Horizontal;
     chart.set_categories({"A", "B"});
     chart.add_series("S", {10, 20}, Color::rgb(40, 90, 200));
     if (with_ref_line) {
       ReferenceLine rl;
-      rl.orientation = ReferenceOrientation::Horizontal;
       rl.value = 15.0;
+      rl.color = Color::rgb(9, 9, 9);
+      rl.width = 2.0f;
+      rl.dash = {};
       chart.cartesian_options().reference_lines.push_back(rl);
     }
     return chart.render();
   };
   auto without = make(false);
   auto with = make(true);
-  CHECK(without.data() == with.data());
+  CHECK(without.data() != with.data());
+
+  std::size_t best_col = 0, best_row = 0;
+  for (std::size_t x = 0; x < with.width(); ++x) {
+    std::size_t n = 0;
+    for (std::size_t y = 0; y < with.height(); ++y) {
+      auto const *p = with.pixel(x, y);
+      if (p[0] == 9 && p[1] == 9 && p[2] == 9)
+        ++n;
+    }
+    best_col = std::max(best_col, n);
+  }
+  for (std::size_t y = 0; y < with.height(); ++y) {
+    std::size_t n = 0;
+    for (std::size_t x = 0; x < with.width(); ++x) {
+      auto const *p = with.pixel(x, y);
+      if (p[0] == 9 && p[1] == 9 && p[2] == 9)
+        ++n;
+    }
+    best_row = std::max(best_row, n);
+  }
+  CHECK(best_col > 80);       // a long vertical run...
+  CHECK(best_row < best_col); // ...not a horizontal one
+}
+
+static void test_expand_steps_shapes() {
+  std::vector<std::pair<float, float>> pts = {{0, 10}, {10, 20}, {20, 5}};
+  auto after = detail::expand_steps(pts, StepMode::After);
+  CHECK(after.size() == 5);
+  CHECK(after[1].first == 10.0f && after[1].second == 10.0f); // horizontal first
+  auto before = detail::expand_steps(pts, StepMode::Before);
+  CHECK(before.size() == 5);
+  CHECK(before[1].first == 0.0f && before[1].second == 20.0f); // vertical first
+  auto mid = detail::expand_steps(pts, StepMode::Middle);
+  CHECK(mid.size() == 7);
+  CHECK(mid[1].first == 5.0f && mid[2].first == 5.0f);
+  CHECK(detail::expand_steps(pts, StepMode::None).size() == 3);
+}
+
+static void test_line_and_area_step_change_output() {
+  auto line = [](StepMode m) {
+    LineChart c;
+    c.set_categories({"a", "b", "c", "d"});
+    c.add_series("S", {1, 4, 2, 5});
+    c.line_options().step = m;
+    return c.render();
+  };
+  CHECK(line(StepMode::None).data() != line(StepMode::After).data());
+  CHECK(line(StepMode::After).data() != line(StepMode::Before).data());
+
+  auto area = [](StepMode m) {
+    AreaChart c;
+    c.set_categories({"a", "b", "c"});
+    c.add_series("S", {1, 4, 2});
+    c.area_options().step = m;
+    return c.render();
+  };
+  CHECK(area(StepMode::None).data() != area(StepMode::Middle).data());
+}
+
+static void test_bar_stacked100_normalises_and_labels_percent() {
+  auto make = [](double scale) {
+    BarChart c;
+    c.set_categories({"A", "B"});
+    c.add_series("x", {1 * scale, 2 * scale});
+    c.add_series("y", {3 * scale, 2 * scale});
+    c.set_mode(BarMode::Stacked100);
+    return c;
+  };
+  // Shares don't depend on magnitude: scaling every value leaves the picture unchanged.
+  CHECK(make(1.0).render().data() == make(1000.0).render().data());
+  auto c = make(1.0);
+  CHECK(has(vector_svg(c), "100%"));
+  auto h = make(1.0);
+  h.set_orientation(BarOrientation::Horizontal);
+  CHECK(has(vector_svg(h), "100%"));
+  // Zero-total and hostile categories render without incident.
+  BarChart z;
+  z.set_categories({"A", "B"});
+  z.add_series("x", {0.0, std::nan("")});
+  z.set_mode(BarMode::Stacked100);
+  CHECK(z.render().width() > 0);
+}
+
+static void test_area_stacked_percent() {
+  AreaChart c;
+  c.set_categories({"a", "b", "c"});
+  c.add_series("x", {1, 5, 2});
+  c.add_series("y", {3, 5, 8});
+  c.area_options().stacked_percent = true;
+  CHECK(has(vector_svg(c), "100%"));
+}
+
+static void test_histogram_binning() {
+  auto h = compute_histogram({1, 2, 2, 3, 3, 3, 4, 4, 4, 4}, HistogramOptions{4, 0, 0});
+  CHECK(h.counts.size() == 4 && h.edges.size() == 5);
+  CHECK(h.counts[0] == 1 && h.counts[1] == 2 && h.counts[2] == 3 && h.counts[3] == 4);
+  CHECK(h.edges.front() == 1.0 && h.edges.back() == 4.0);
+
+  auto auto_bins = compute_histogram({1, 2, 3, 4, 5, 6, 7, 8});
+  CHECK(auto_bins.counts.size() == 4); // 1 + log2(8)
+  std::size_t total = 0;
+  for (auto n : auto_bins.counts)
+    total += n;
+  CHECK(total == 8);
+
+  CHECK(compute_histogram({}).counts.empty());
+  CHECK(compute_histogram({std::nan(""), HUGE_VAL}).counts.empty());
+  auto same = compute_histogram({5, 5, 5}, HistogramOptions{3, 0, 0});
+  CHECK(same.counts.size() == 3 && same.counts[0] == 3);
+  // Explicit range ignores out-of-range samples.
+  auto ranged = compute_histogram({-5, 1, 2, 99}, HistogramOptions{2, 0, 4});
+  CHECK(ranged.counts[0] + ranged.counts[1] == 2);
+
+  auto chart = make_histogram_chart({1, 2, 2, 3, 3, 3}, HistogramOptions{3, 0, 0}, "Hits");
+  CHECK(chart.categories().size() == 3);
+  CHECK(chart.render().width() > 0);
+}
+
+static bool same_rgb(Color a, Color b) {
+  return a.r == b.r && a.g == b.g && a.b == b.b;
+}
+
+static void test_colorblind_palette() {
+  CHECK(same_rgb(colorblind_color(0), Color::rgb(0, 114, 178)));
+  CHECK(same_rgb(colorblind_color(8), colorblind_color(0)));
+  CHECK(same_rgb(palette_color_by_kind(PaletteKind::ColorblindSafe, 1), colorblind_color(1)));
+  BarChart b;
+  b.options().palette = PaletteKind::ColorblindSafe;
+  b.add_series("a", {1});
+  b.add_series("b", {2});
+  CHECK(same_rgb(b.series()[0].color, colorblind_color(0)));
+  CHECK(same_rgb(b.series()[1].color, colorblind_color(1)));
+  BarChart d;
+  d.add_series("a", {1});
+  CHECK(same_rgb(d.series()[0].color, palette_color(0))); // default is unchanged
+}
+
+static void test_multiline_title_and_labels() {
+  BarChart c;
+  c.options().title = "Line one\nLine two";
+  c.set_categories({"Q1\n2024", "Q2\n2024"});
+  c.add_series("S", {1, 2});
+  auto svg = vector_svg(c);
+  CHECK(has(svg, ">Line one</text>"));
+  CHECK(has(svg, ">Line two</text>"));
+  CHECK(has(svg, ">Q1</text>") && has(svg, ">2024</text>"));
+  // The title's second line must not collide with the plot: the plot starts below it.
+  BarChart single;
+  single.options().title = "Line one";
+  single.set_categories({"Q1", "Q2"});
+  single.add_series("S", {1, 2});
+  CHECK(c.render().data() != single.render().data());
 }
 
 // ---------------------------------------------------------------------------
@@ -2433,7 +2589,14 @@ int main() {
   // Horizontal bar orientation
   test_bar_chart_horizontal_renders_correct_size();
   test_bar_chart_horizontal_bar_length_reflects_value();
-  test_bar_chart_horizontal_ignores_reference_lines();
+  test_bar_chart_horizontal_reference_line_is_vertical();
+  test_expand_steps_shapes();
+  test_line_and_area_step_change_output();
+  test_bar_stacked100_normalises_and_labels_percent();
+  test_area_stacked_percent();
+  test_histogram_binning();
+  test_colorblind_palette();
+  test_multiline_title_and_labels();
 
   // Reference line / band overlay
   test_reference_line_horizontal_pixel_row_has_line_color();

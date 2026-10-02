@@ -36,6 +36,7 @@ set(INSIGHTDOCK_SOURCES
   src/reference_lines.cc
   src/cartesian_chart.cc
   src/bar_chart.cc
+  src/histogram.cc
   src/line_chart.cc
   src/area_chart.cc
   src/combo_chart.cc

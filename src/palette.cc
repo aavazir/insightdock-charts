@@ -27,6 +27,18 @@ Color const kTableau10[] = {
     Color::rgb(186, 176, 172), // #BAB0AC
 };
 
+// Okabe & Ito (2008) colorblind-safe palette; black is left out so series stay distinct from text.
+Color const kColorblind[] = {
+    Color::rgb(0, 114, 178),   // blue
+    Color::rgb(230, 159, 0),   // orange
+    Color::rgb(0, 158, 115),   // bluish green
+    Color::rgb(213, 94, 0),    // vermillion
+    Color::rgb(86, 180, 233),  // sky blue
+    Color::rgb(204, 121, 167), // reddish purple
+    Color::rgb(240, 228, 66),  // yellow
+    Color::rgb(117, 117, 117), // gray
+};
+
 } // namespace
 
 Color palette_color(std::size_t index) {
@@ -37,9 +49,19 @@ Color tableau10_color(std::size_t index) {
   return kTableau10[index % tableau10_size()];
 }
 
+Color colorblind_color(std::size_t index) {
+  return kColorblind[index % colorblind_size()];
+}
+
 Color palette_color_by_kind(PaletteKind kind, std::size_t index) {
-  if (kind == PaletteKind::Tableau10)
+  switch (kind) {
+  case PaletteKind::Tableau10:
     return tableau10_color(index);
+  case PaletteKind::ColorblindSafe:
+    return colorblind_color(index);
+  case PaletteKind::ChartJs:
+    break;
+  }
   return palette_color(index);
 }
 

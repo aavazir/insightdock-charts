@@ -38,6 +38,7 @@
 #include "insightdock/export.h"
 #include "insightdock/font.h"
 #include "insightdock/geometry.h"
+#include "insightdock/histogram.h"
 #include "insightdock/image_buffer.h"
 #include "insightdock/line_chart.h"
 #include "insightdock/palette.h"

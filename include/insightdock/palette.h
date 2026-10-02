@@ -17,8 +17,9 @@ namespace insightdock::charts {
 
 /** @brief Named palette for automatic series/slice coloring. */
 enum class PaletteKind {
-  ChartJs,  ///< 12-color Chart.js / AmCharts style palette.
-  Tableau10 ///< 10-color Tableau palette (common in reports).
+  ChartJs,       ///< 12-color Chart.js / AmCharts style palette.
+  Tableau10,     ///< 10-color Tableau palette (common in reports).
+  ColorblindSafe ///< 8-color Okabe-Ito palette, distinguishable under common color-vision deficiency.
 };
 
 /**
@@ -34,6 +35,12 @@ INSIGHTDOCK_API Color palette_color(std::size_t index);
 INSIGHTDOCK_API Color tableau10_color(std::size_t index);
 
 /**
+ * @brief Color from the Okabe-Ito colorblind-safe palette.
+ * @param index Index (wraps modulo 8).
+ */
+INSIGHTDOCK_API Color colorblind_color(std::size_t index);
+
+/**
  * @brief Color from a specific palette kind.
  * @param kind  Palette to use.
  * @param index Color index (wraps per palette size).
@@ -47,6 +54,10 @@ constexpr std::size_t palette_size() {
 /** @brief Number of colors in the Tableau 10 palette. */
 constexpr std::size_t tableau10_size() {
   return 10;
+}
+/** @brief Number of colors in the colorblind-safe (Okabe-Ito) palette. */
+constexpr std::size_t colorblind_size() {
+  return 8;
 }
 
 } // namespace insightdock::charts

@@ -34,6 +34,14 @@ enum class GapPolicy {
   Interpolate, ///< Skip the value and connect its neighbours.
 };
 
+/** @brief Staircase interpolation between points (line and area charts). */
+enum class StepMode {
+  None,   ///< Straight segments (default).
+  After,  ///< Hold each value until the next x ("step-post"): horizontal first, then vertical.
+  Before, ///< Jump to the next value immediately ("step-pre"): vertical first, then horizontal.
+  Middle, ///< Change halfway between two points.
+};
+
 /**
  * @brief Optional per-series overrides of the chart-wide line/marker options.
  *

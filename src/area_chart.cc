@@ -7,6 +7,7 @@
 #include "insightdock/detail/reference_lines.h"
 #include "insightdock/detail/series_runs.h"
 #include "insightdock/detail/spline.h"
+#include "insightdock/detail/step.h"
 #include "insightdock/detail/tick_format.h"
 #include "insightdock/font.h"
 
@@ -17,6 +18,8 @@
 namespace insightdock::charts {
 
 double AreaChart::compute_y_max() const {
+  if (area_opts_.stacked_percent)
+    return 100.0;
   if (!area_opts_.stacked)
     return CartesianChart::compute_y_max();
   // Stacked: the axis must fit the per-category totals, not the tallest single series.
@@ -48,8 +51,21 @@ void AreaChart::draw_series(PlotContext &ctx) const {
   if (area_opts_.data_labels.enabled)
     label_font.set_size(area_opts_.data_labels.font_size);
 
-  if (area_opts_.stacked) {
+  if (area_opts_.stacked || area_opts_.stacked_percent) {
     std::vector<double> cumulative(ncat, 0.0);
+    // 100%-stacked: per-category factor mapping raw values onto a 0-100 share.
+    std::vector<double> factor(ncat, 1.0);
+    if (area_opts_.stacked_percent) {
+      for (std::size_t i = 0; i < ncat; ++i) {
+        double total = 0.0;
+        for (auto const &s : ctx.series) {
+          double v = detail::value_or_nan(s.values, i);
+          if (std::isfinite(v) && v > 0.0)
+            total += v;
+        }
+        factor[i] = total > 0.0 ? 100.0 / total : 0.0;
+      }
+    }
     for (auto const &ser : ctx.series) {
       auto const &dash = ser.style.dash_or(area_opts_.dash);
       float line_width = ser.style.line_width_or(area_opts_.line_width);
@@ -63,20 +79,23 @@ void AreaChart::draw_series(PlotContext &ctx) const {
       for (std::size_t i = 0; i < ncat; ++i) {
         // A missing value contributes nothing to the stack (a stack can't have a hole).
         double val = detail::value_or_nan(ser.values, i);
-        if (!std::isfinite(val))
+        if (!std::isfinite(val) || (area_opts_.stacked_percent && val < 0.0))
           val = 0.0;
         double base = cumulative[i];
-        cumulative[i] += val;
+        cumulative[i] += val * factor[i];
         float px = ctx.continuous_x ? ctx.x_scale.to_pixel(ctx.x_values[i])
                                     : ctx.plot.left() + slot * (static_cast<float>(i) + 0.5f);
         top_pts.push_back({px, ctx.y_scale.to_pixel(cumulative[i])});
         bottom_pts.push_back({px, ctx.y_scale.to_pixel(base)});
       }
 
-      std::vector<std::pair<float, float>> top_curve =
-          area_opts_.spline ? detail::catmull_rom_expand(top_pts) : top_pts;
-      std::vector<std::pair<float, float>> bottom_curve =
-          area_opts_.spline ? detail::catmull_rom_expand(bottom_pts) : bottom_pts;
+      auto shape_curve = [&](std::vector<std::pair<float, float>> const &pts) {
+        if (area_opts_.step != StepMode::None)
+          return detail::expand_steps(pts, area_opts_.step);
+        return area_opts_.spline ? detail::catmull_rom_expand(pts) : pts;
+      };
+      std::vector<std::pair<float, float>> top_curve = shape_curve(top_pts);
+      std::vector<std::pair<float, float>> bottom_curve = shape_curve(bottom_pts);
 
       std::vector<std::pair<float, float>> poly = top_curve;
       for (auto it = bottom_curve.rbegin(); it != bottom_curve.rend(); ++it)
@@ -135,7 +154,9 @@ void AreaChart::draw_series(PlotContext &ctx) const {
       if (pts.size() < 2)
         continue;
       std::vector<std::pair<float, float>> curve =
-          area_opts_.spline ? detail::catmull_rom_expand(pts) : pts;
+          area_opts_.step != StepMode::None
+              ? detail::expand_steps(pts, area_opts_.step)
+              : (area_opts_.spline ? detail::catmull_rom_expand(pts) : pts);
 
       std::vector<std::pair<float, float>> poly = curve;
       poly.push_back({curve.back().first, y0});

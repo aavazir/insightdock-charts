@@ -4,6 +4,7 @@
 #include "insightdock/cartesian_chart.h"
 #include "insightdock/detail/finite_range.h"
 #include "insightdock/detail/marker.h"
+#include "insightdock/detail/text_lines.h"
 #include "insightdock/detail/tick_format.h"
 #include "insightdock/palette.h"
 
@@ -61,7 +62,7 @@ void CartesianChart::add_series(std::string label, std::vector<double> values) {
   DataSeries s;
   s.label = std::move(label);
   s.values = std::move(values);
-  s.color = palette_color(series_.size());
+  s.color = palette_color_by_kind(options_.palette, series_.size());
   s.auto_color = true;
   series_.push_back(std::move(s));
 }
@@ -116,6 +117,13 @@ bool CartesianChart::x_labels_rotated() const {
 
 float CartesianChart::x_label_row_height(Font const &font) const {
   float row = font.line_height();
+  if (!x_labels_rotated() && !is_horizontal()) {
+    // Category labels may contain '\n'; the row must fit the tallest one.
+    std::size_t lines = 1;
+    for (auto const &cat : categories_)
+      lines = std::max(lines, detail::line_count(cat));
+    row *= static_cast<float>(lines);
+  }
   if (x_labels_rotated()) {
     for (auto const &cat : categories_)
       row = std::max(row, font.measure_width(cat) + 2.0f);
@@ -127,7 +135,10 @@ Rect CartesianChart::compute_plot_rect(float w, float h, Font const &font) const
   Margins m = options_.margins;
 
   if (!options_.title.empty()) {
-    m.top = std::max(m.top, font.line_height() + 16.0f);
+    // The title is drawn 4px larger than the base font; extra lines step by its line height.
+    float step = font.line_height() * (options_.font_size + 4.0f) / options_.font_size;
+    m.top = std::max(m.top, font.line_height() + 16.0f +
+                                static_cast<float>(detail::line_count(options_.title) - 1) * step);
   }
   // Height of the x-axis label row: one text line, or the longest label when rotated 90°.
   bool rotated = x_labels_rotated();
@@ -135,11 +146,18 @@ Rect CartesianChart::compute_plot_rect(float w, float h, Font const &font) const
   if (options_.legend.enabled && options_.legend.position == LegendOptions::Position::Bottom) {
     float lh = font.line_height();
     float legend_row = lh + 10.0f;
-    float x_title_h = cartesian_.x_axis_label.empty() ? 0.0f : lh + 8.0f;
+    float x_title_h =
+        cartesian_.x_axis_label.empty()
+            ? 0.0f
+            : lh * static_cast<float>(detail::line_count(cartesian_.x_axis_label)) + 8.0f;
     // x-label gap + x-label row + gap + legend row + optional x-axis title
     m.bottom = std::max(m.bottom, 8.0f + label_row + 8.0f + legend_row + x_title_h);
-  } else if (rotated) {
-    float x_title_h = cartesian_.x_axis_label.empty() ? 0.0f : font.line_height() + 8.0f;
+  } else if (rotated || label_row > font.line_height() + 0.5f) {
+    float x_title_h = cartesian_.x_axis_label.empty()
+                          ? 0.0f
+                          : font.line_height() *
+                                    static_cast<float>(detail::line_count(cartesian_.x_axis_label)) +
+                                8.0f;
     m.bottom = std::max(m.bottom, 8.0f + label_row + 8.0f + x_title_h);
   }
   if (options_.legend.enabled && options_.legend.position == LegendOptions::Position::Right) {
@@ -171,11 +189,32 @@ void CartesianChart::draw_title(DrawTarget &buf, Font &font) const {
   if (options_.title.empty())
     return;
   font.set_size(options_.font_size + 4.0f);
-  float tw = font.measure_width(options_.title);
-  float x = (buf.width() - tw) * 0.5f;
-  buf.draw_text(font, x, 12.0f, options_.title, options_.title_color, TextAlign::Left,
-                TextBaseline::Top);
+  // One draw per '\n'-separated line, each centred on its own width.
+  float y = 12.0f;
+  std::size_t start = 0;
+  for (;;) {
+    std::size_t nl = options_.title.find('\n', start);
+    std::string line =
+        options_.title.substr(start, nl == std::string::npos ? nl : nl - start);
+    float tw = font.measure_width(line);
+    float x = (buf.width() - tw) * 0.5f;
+    buf.draw_text(font, x, y, line, options_.title_color, TextAlign::Left, TextBaseline::Top);
+    if (nl == std::string::npos)
+      break;
+    start = nl + 1;
+    y += font.line_height();
+  }
   font.set_size(options_.font_size);
+}
+
+std::string CartesianChart::y_tick_label(double v, PlotContext const &ctx) const {
+  if (y_axis_is_percent() && ctx.cart_opts.y_tick_format == TickFormat::Raw &&
+      !ctx.cart_opts.custom_y_formatter) {
+    char buf[32];
+    std::snprintf(buf, sizeof(buf), "%g%%", v);
+    return buf;
+  }
+  return detail::format_tick_value(v, ctx.cart_opts.y_tick_format, ctx.cart_opts.custom_y_formatter);
 }
 
 void CartesianChart::draw_axes_and_grid(PlotContext &ctx) const {
@@ -208,8 +247,7 @@ void CartesianChart::draw_axes_and_grid(PlotContext &ctx) const {
         continue;
       if (ctx.opts.show_grid)
         buf.draw_line(px, plot.top(), px, plot.bottom(), 1.0f, ctx.opts.grid_color);
-      std::string label = detail::format_tick_value(v, ctx.cart_opts.y_tick_format,
-                                                    ctx.cart_opts.custom_y_formatter);
+      std::string label = y_tick_label(v, ctx);
       buf.draw_text(font, px, plot.bottom() + 8.0f, label, ctx.opts.text_color, TextAlign::Center,
                     TextBaseline::Top);
     }
@@ -223,8 +261,7 @@ void CartesianChart::draw_axes_and_grid(PlotContext &ctx) const {
         buf.draw_line(plot.left(), py, plot.right(), py, 1.0f, ctx.opts.grid_color);
       }
 
-      std::string label = detail::format_tick_value(v, ctx.cart_opts.y_tick_format,
-                                                    ctx.cart_opts.custom_y_formatter);
+      std::string label = y_tick_label(v, ctx);
       buf.draw_text(font, plot.left() - 8.0f, py, label, ctx.opts.text_color, TextAlign::Right,
                     TextBaseline::Middle);
     }
@@ -255,8 +292,8 @@ void CartesianChart::draw_axes_and_grid(PlotContext &ctx) const {
     float slot = plot.h / static_cast<float>(n_cats);
     for (std::size_t i = 0; i < ctx.categories.size(); ++i) {
       float py = plot.top() + slot * (static_cast<float>(i) + 0.5f);
-      buf.draw_text(font, plot.left() - 8.0f, py, ctx.categories[i], ctx.opts.text_color,
-                    TextAlign::Right, TextBaseline::Middle);
+      detail::draw_text_lines(buf, font, plot.left() - 8.0f, py, ctx.categories[i],
+                              ctx.opts.text_color, TextAlign::Right, TextBaseline::Middle);
     }
   } else if (ctx.continuous_x) {
     // Continuous (DateTime) x-axis: nice ticks from the numeric domain, formatted the same
@@ -320,8 +357,8 @@ void CartesianChart::draw_axes_and_grid(PlotContext &ctx) const {
       std::string label = ctx.categories[i];
       if (mode == CartesianOptions::XLabelMode::Truncate)
         label = truncate_to_width(font, label, slot * static_cast<float>(step) - 4.0f);
-      buf.draw_text(font, cx, plot.bottom() + 8.0f, label, ctx.opts.text_color, TextAlign::Center,
-                    TextBaseline::Top);
+      detail::draw_text_lines(buf, font, cx, plot.bottom() + 8.0f, label, ctx.opts.text_color,
+                              TextAlign::Center, TextBaseline::Top);
     }
   }
 
@@ -344,8 +381,9 @@ void CartesianChart::draw_axes_and_grid(PlotContext &ctx) const {
                              ctx.cart_opts.y2_axis_label, ctx.opts.text_color);
   }
   if (!ctx.cart_opts.x_axis_label.empty()) {
-    buf.draw_text(font, plot.center_x(), buf.height() - 8.0f, ctx.cart_opts.x_axis_label,
-                  ctx.opts.text_color, TextAlign::Center, TextBaseline::Bottom);
+    detail::draw_text_lines(buf, font, plot.center_x(), buf.height() - 8.0f,
+                            ctx.cart_opts.x_axis_label, ctx.opts.text_color, TextAlign::Center,
+                            TextBaseline::Bottom);
   }
 }
 
@@ -446,6 +484,12 @@ bool CartesianChart::draw(DrawTarget &buf) const {
     y_scale = cartesian_.y_scale_type == ScaleType::Log
                   ? Scale::log_nice(ymin, ymax, plot.top(), plot.bottom(), yticks)
                   : Scale::linear_nice(ymin, ymax, plot.top(), plot.bottom(), yticks);
+  }
+
+  if (y_axis_is_percent()) {
+    // A share axis is exactly 0-100%: no 5% padding or extension to the next tick.
+    y_scale = horizontal ? Scale(0.0, 100.0, plot.right(), plot.left())
+                         : Scale(0.0, 100.0, plot.top(), plot.bottom());
   }
 
   bool continuous_x = supports_continuous_x_axis() &&
