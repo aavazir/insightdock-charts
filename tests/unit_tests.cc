@@ -15,6 +15,7 @@
 #include <cassert>
 #include <cmath>
 #include <cstdio>
+#include <limits>
 
 using namespace insightdock::charts;
 
@@ -1604,7 +1605,262 @@ static void test_bar_chart_horizontal_ignores_reference_lines() {
 // Runner
 // ---------------------------------------------------------------------------
 
+// ── Hostile / non-finite input (must return promptly, never hang or crash) ───────────────────
+
+static bool any_ink(ImageBuffer const &img) {
+  for (std::size_t y = 0; y < img.height(); ++y)
+    for (std::size_t x = 0; x < img.width(); ++x)
+      if (img.pixel(x, y)[3] != 0)
+        return true;
+  return false;
+}
+
+static void test_hostile_values_all_cartesian_charts() {
+  double const nan = std::nan("");
+  double const inf = std::numeric_limits<double>::infinity();
+  std::vector<std::vector<double>> cases = {
+      {nan, 1, 2},        {1, nan, 3},
+      {inf, 1, 2},        {-inf, 1, 2},
+      {1e300, -1e300, 5}, {nan, nan, nan},
+      {inf, -inf, nan},   {},
+      {1e-300, 1e300},    {std::numeric_limits<double>::max(), 1},
+  };
+  for (auto const &vals : cases) {
+    BarChart bar;
+    bar.set_categories({"a", "b", "c"});
+    bar.add_series("s", vals);
+    CHECK(bar.render().width() == bar.options().width);
+    bar.bar_options().mode = BarMode::Stacked;
+    CHECK(bar.render().width() == bar.options().width);
+    bar.bar_options().orientation = BarOrientation::Horizontal;
+    CHECK(bar.render().width() == bar.options().width);
+
+    LineChart line;
+    line.set_categories({"a", "b", "c"});
+    line.add_series("s", vals);
+    line.line_options().dash = {4.0f, 2.0f};
+    line.line_options().spline = true;
+    line.line_options().fill_area = true;
+    CHECK(line.render().width() == line.options().width);
+    line.cartesian_options().y_scale_type = ScaleType::Log;
+    CHECK(line.render().width() == line.options().width);
+
+    AreaChart area;
+    area.set_categories({"a", "b", "c"});
+    area.add_series("s", vals);
+    CHECK(area.render().width() == area.options().width);
+
+    ComboChart combo;
+    combo.set_categories({"a", "b", "c"});
+    combo.add_bar_series("b", vals);
+    combo.add_line_series("l", vals, /*secondary_axis=*/true);
+    CHECK(combo.render().width() == combo.options().width);
+  }
+}
+
+static void test_hostile_scatter_and_pie() {
+  double const nan = std::nan("");
+  double const inf = std::numeric_limits<double>::infinity();
+  ScatterChart sc;
+  sc.add_series("s", {{nan, 1, 0}, {1, inf, 0}, {2, 3, nan}, {4, 5, inf}, {1e300, -1e300, 1e300}});
+  CHECK(sc.render().width() == sc.options().width);
+
+  PieChart pie;
+  pie.add_slice("a", nan);
+  pie.add_slice("b", inf);
+  pie.add_slice("c", 5);
+  CHECK(pie.render().width() == pie.options().width);
+}
+
+static void test_nonfinite_primitives_do_not_hang() {
+  double const nan = std::nan("");
+  float const fnan = std::numeric_limits<float>::quiet_NaN();
+  float const finf = std::numeric_limits<float>::infinity();
+  ImageBuffer img(64, 64);
+  Color c = Color::rgb(10, 20, 30);
+  img.draw_line(0, 0, finf, 10, 2.0f, c);
+  img.draw_line(fnan, 0, 10, 10, 2.0f, c);
+  img.draw_line(0, 0, 1e30f, 1e30f, 2.0f, c);
+  img.draw_dashed_line(0, 0, finf, 10, 2.0f, c, {4, 2});
+  img.draw_dashed_line(-1e30f, 5, 1e30f, 5, 2.0f, c, {4, 2});
+  img.draw_dashed_line(0, 0, 60, 60, 2.0f, c, {finf, 2});
+  img.draw_dashed_line(0, 0, 60, 60, 2.0f, c, {1e-9f, 1e-9f});
+  std::pair<float, float> poly[] = {{0, 0}, {finf, 5}, {10, 10}};
+  img.fill_polygon(poly, 3, c);
+  std::pair<float, float> poly2[] = {{-1e30f, -1e30f}, {1e30f, -1e30f}, {0, 1e30f}};
+  img.fill_polygon(poly2, 3, c);
+  img.fill_rect(fnan, 0.0f, 10.0f, 10.0f, c);
+  img.fill_rect(-1e30f, -1e30f, 3e30f, 3e30f, c);
+  img.fill_circle(fnan, 5, 3, c);
+  img.fill_circle(5, 5, finf, c);
+  img.fill_sector(32, 32, 20, 1e300, 2e300, c);
+  img.fill_sector(32, 32, 20, nan, 1.0, c);
+  img.fill_rounded_rect(0, 0, finf, 5, 2, c);
+  CHECK(img.width() == 64);
+}
+
+static void test_scale_nonfinite_domain_is_sanitized() {
+  double const nan = std::nan("");
+  double const inf = std::numeric_limits<double>::infinity();
+  Scale a = Scale::linear_nice(nan, inf, 0, 100, 6);
+  CHECK(std::isfinite(a.min()) && std::isfinite(a.max()));
+  Scale b = Scale::linear_nice(0, 1e308, 0, 100, 6);
+  CHECK(b.nice_ticks(6).size() <= 1001);
+  Scale c = Scale::log_nice(-inf, inf, 0, 100, 6);
+  CHECK(std::isfinite(c.min()) && std::isfinite(c.max()));
+  Scale d(0, 1e300, 0, 100);
+  d.set_type(ScaleType::DateTime);
+  CHECK(d.nice_ticks(6).size() <= 1001);
+  CHECK(d.nice_ticks(-5).size() <= 1001);
+  Scale e(1, 1e308, 0, 100);
+  e.set_type(ScaleType::Log);
+  CHECK(!e.nice_ticks(6).empty());
+}
+
+static void test_huge_dimensions_report_invalid_input() {
+  BarChart bar;
+  bar.set_categories({"a"});
+  bar.add_series("s", {1});
+  bar.options().width = 1u << 20;
+  bar.options().height = 1u << 20;
+  CHECK(bar.render().width() == 0);
+  auto res = ChartExporter::encode(bar, ExportOptions{});
+  CHECK(!res);
+  CHECK(res.error() == ChartError::InvalidInput);
+
+  bar.options().width = 640;
+  bar.options().height = 400;
+  ExportOptions ss;
+  ss.supersample = 1000000;
+  auto ok = ChartExporter::encode(bar, ss); // clamped to the supersample cap
+  CHECK(static_cast<bool>(ok));
+
+  bar.options().width = 0;
+  CHECK(!ChartExporter::encode(bar, ExportOptions{}));
+}
+
+static void test_empty_charts_render() {
+  BarChart bar;
+  CHECK(bar.render().width() == bar.options().width);
+  LineChart line;
+  CHECK(line.render().width() == line.options().width);
+  AreaChart area;
+  CHECK(area.render().width() == area.options().width);
+  ComboChart combo;
+  CHECK(combo.render().width() == combo.options().width);
+  ScatterChart sc;
+  CHECK(sc.render().width() == sc.options().width);
+  PieChart pie;
+  CHECK(pie.render().width() == pie.options().width);
+  CHECK(!any_ink(ImageBuffer()));
+}
+
+// Deterministic property test: random mixes of finite/NaN/Inf/huge values and odd chart sizes must
+// render with the requested dimensions (or an empty buffer for unsupported sizes) and not hang.
+static void test_fuzz_hostile_data_all_chart_types() {
+  uint32_t state = 0x12345678u;
+  auto next = [&state]() {
+    state = state * 1664525u + 1013904223u;
+    return state >> 8;
+  };
+  auto value = [&]() -> double {
+    switch (next() % 8) {
+    case 0:
+      return std::nan("");
+    case 1:
+      return std::numeric_limits<double>::infinity();
+    case 2:
+      return -std::numeric_limits<double>::infinity();
+    case 3:
+      return 1e300;
+    case 4:
+      return -1e300;
+    case 5:
+      return 0.0;
+    default:
+      return static_cast<double>(next() % 2000) / 10.0 - 50.0;
+    }
+  };
+  for (int iter = 0; iter < 40; ++iter) {
+    std::size_t n = 1 + next() % 12;
+    std::vector<double> a(n), b(n);
+    std::vector<std::string> cats(n);
+    for (std::size_t i = 0; i < n; ++i) {
+      a[i] = value();
+      b[i] = value();
+      cats[i] = "c" + std::to_string(i);
+    }
+    std::size_t w = 1 + next() % 300, h = 1 + next() % 300;
+
+    BarChart bar;
+    bar.options().width = w;
+    bar.options().height = h;
+    bar.set_categories(cats);
+    bar.add_series("a", a);
+    bar.add_series("b", b);
+    if (next() & 1)
+      bar.bar_options().mode = BarMode::Stacked;
+    if (next() & 1)
+      bar.bar_options().orientation = BarOrientation::Horizontal;
+    CHECK(bar.render().width() == w);
+
+    LineChart line;
+    line.options().width = w;
+    line.options().height = h;
+    line.set_categories(cats);
+    line.add_series("a", a);
+    line.add_series("b", b);
+    line.line_options().spline = next() & 1;
+    line.line_options().fill_area = next() & 1;
+    if (next() & 1)
+      line.line_options().dash = {5.0f, 3.0f};
+    if (next() & 1)
+      line.cartesian_options().y_scale_type = ScaleType::Log;
+    CHECK(line.render().height() == h);
+
+    AreaChart area;
+    area.options().width = w;
+    area.options().height = h;
+    area.set_categories(cats);
+    area.add_series("a", a);
+    area.add_series("b", b);
+    CHECK(area.render().width() == w);
+
+    ComboChart combo;
+    combo.options().width = w;
+    combo.options().height = h;
+    combo.set_categories(cats);
+    combo.add_bar_series("a", a);
+    combo.add_line_series("b", b, /*secondary_axis=*/(next() & 1) != 0);
+    CHECK(combo.render().width() == w);
+
+    ScatterChart sc;
+    sc.options().width = w;
+    sc.options().height = h;
+    std::vector<ScatterPoint> pts;
+    for (std::size_t i = 0; i < n; ++i)
+      pts.push_back({a[i], b[i], (next() & 1) ? std::fabs(a[i]) : 0.0});
+    sc.add_series("p", pts);
+    CHECK(sc.render().width() == w);
+
+    PieChart pie;
+    pie.options().width = w;
+    pie.options().height = h;
+    for (std::size_t i = 0; i < n; ++i)
+      pie.add_slice(cats[i], a[i]);
+    CHECK(pie.render().width() == w);
+  }
+}
+
 int main() {
+  test_fuzz_hostile_data_all_chart_types();
+  test_hostile_values_all_cartesian_charts();
+  test_hostile_scatter_and_pie();
+  test_nonfinite_primitives_do_not_hang();
+  test_scale_nonfinite_domain_is_sanitized();
+  test_huge_dimensions_report_invalid_input();
+  test_empty_charts_render();
+
   // Data labels (all chart types)
   test_bar_data_label_draws_ink_above_bar();
   test_bar_data_label_disabled_by_default();

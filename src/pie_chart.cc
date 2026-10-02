@@ -115,7 +115,8 @@ PieChart::PieChart() {
 void PieChart::add_slice(std::string label, double value, Color color) {
   PieSlice slice;
   slice.label = std::move(label);
-  slice.value = value;
+  // NaN/Inf can't be drawn proportionally and would poison the total; treat them as zero.
+  slice.value = std::isfinite(value) ? value : 0.0;
   slice.color = color;
   slices_.push_back(std::move(slice));
 }

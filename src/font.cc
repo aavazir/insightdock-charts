@@ -134,6 +134,11 @@ void Font::draw_text(ImageBuffer &buffer, float x, float y, std::string const &t
     bx = x - width;
 
   float by = y + baseline_offset(baseline);
+  // Non-finite or absurdly distant anchors can't land on the buffer; bail before any float->int
+  // cast.
+  constexpr float kFar = 1.0e7f;
+  if (!std::isfinite(bx) || !std::isfinite(by) || std::fabs(bx) > kFar || std::fabs(by) > kFar)
+    return;
 
   int prev = 0;
   float cursor_x = bx;
@@ -209,6 +214,8 @@ void Font::draw_text(ImageBuffer &buffer, float x, float y, std::string const &t
 void Font::blit_rotated(ImageBuffer &buffer, float cx, float cy, std::string const &text,
                         Color const &color, bool clockwise) const {
   if (!loaded_ || !state_ || text.empty())
+    return;
+  if (!std::isfinite(cx) || !std::isfinite(cy) || std::fabs(cx) > 1.0e7f || std::fabs(cy) > 1.0e7f)
     return;
 
   int iw = static_cast<int>(std::ceil(measure_width(text))) + 2;

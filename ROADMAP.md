@@ -219,7 +219,7 @@ Do not publish to GitHub until every item here is checked. This is the public fi
 - [x] GitHub Actions CI (build, test, sanitizers, clang-tidy, MrDocs) — `.github/workflows/ci.yml`, `.github/workflows/docs.yml`
 - [ ] vcpkg port submitted (`insightdock-charts`) — primary Windows and CMake install path
 - [x] `pkg-config` `.pc` file installed by `cmake --install` — `cmake/insightdock.pc.in`, installed to `lib/pkgconfig/insightdock.pc`
-- [ ] `CHANGELOG.md` placeholder URLs replaced with real GitHub URLs
+- [x] `CHANGELOG.md` placeholder URLs replaced with real GitHub URLs
 - [ ] Public MkDocs Material site deployed to GitHub Pages (quick start, gallery, comparison) — workflow in place (`.github/workflows/docs.yml`), unverified until the repo exists on GitHub
 - [x] `find_package(InsightDock)` tested end-to-end from a fresh install — manual verification (clean `cmake --install` to a temp prefix + a throwaway consumer `CMakeLists.txt` doing `find_package(InsightDock CONFIG REQUIRED)`); caught and fixed a real bug where the exported target was `InsightDock::InsightDockCharts` instead of `InsightDock::Charts` (missing `EXPORT_NAME` property). Not yet automated in CI.
 - [x] OpenWrt packaging sample — `packaging/openwrt/Makefile`, a standard `package.mk`-based feed package wired to the upstream Makefile's `CHART_TYPES`/`EXPORT_FORMATS`/`FONT_MODE` knobs

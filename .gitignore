@@ -67,3 +67,5 @@ docs/doxygen/html/
 site/
 docs-site/api/
 docs-site/img/gallery/
+unit_tests
+*.d

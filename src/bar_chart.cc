@@ -23,7 +23,7 @@ double BarChart::compute_y_max() const {
   for (std::size_t ci = 0; ci < ncat; ++ci) {
     double sum = 0.0;
     for (auto const &s : series_) {
-      if (ci < s.values.size())
+      if (ci < s.values.size() && std::isfinite(s.values[ci]))
         sum += s.values[ci];
     }
     if (sum > ymax)
@@ -158,8 +158,7 @@ void BarChart::draw_grouped_horizontal(PlotContext &ctx) const {
     auto const &ser = ctx.series[si];
     for (std::size_t ci = 0; ci < ncat; ++ci) {
       double val = (ci < ser.values.size()) ? ser.values[ci] : 0.0;
-      float cy =
-          ctx.plot.top() + slot * static_cast<float>(ci) + slot * bar_opts_.group_gap * 0.5f;
+      float cy = ctx.plot.top() + slot * static_cast<float>(ci) + slot * bar_opts_.group_gap * 0.5f;
       float by = cy + static_cast<float>(si) * (group_h / static_cast<float>(nser));
       float bx_end = ctx.y_scale.to_pixel(val);
       float bx_left = x0;

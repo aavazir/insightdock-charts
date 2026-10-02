@@ -3,6 +3,7 @@
 
 #include "insightdock/combo_chart.h"
 #include "insightdock/detail/bar_shape.h"
+#include "insightdock/detail/finite_range.h"
 #include "insightdock/detail/marker.h"
 #include "insightdock/detail/reference_lines.h"
 #include "insightdock/detail/spline.h"
@@ -23,37 +24,29 @@ bool series_uses_secondary(std::vector<bool> const &use_y2, std::size_t i) {
   return i < use_y2.size() && use_y2[i];
 }
 
-double axis_min(std::vector<DataSeries> const &series, std::vector<bool> const &use_y2,
-                bool secondary, bool begin_at_zero) {
-  double ymin = 0.0;
-  bool any = false;
-  for (std::size_t i = 0; i < series.size(); ++i) {
-    if (series_uses_secondary(use_y2, i) != secondary)
-      continue;
-    for (double v : series[i].values) {
-      if (!any) {
-        ymin = v;
-        any = true;
-      } else {
-        ymin = std::min(ymin, v);
-      }
-    }
-  }
-  if (!any)
-    return 0.0;
-  return begin_at_zero ? std::min(0.0, ymin) : ymin;
-}
-
-double axis_max(std::vector<DataSeries> const &series, std::vector<bool> const &use_y2,
-                bool secondary) {
-  double ymax = 0.0;
+detail::FiniteRange axis_range(std::vector<DataSeries> const &series,
+                               std::vector<bool> const &use_y2, bool secondary) {
+  detail::FiniteRange r;
   for (std::size_t i = 0; i < series.size(); ++i) {
     if (series_uses_secondary(use_y2, i) != secondary)
       continue;
     for (double v : series[i].values)
-      ymax = std::max(ymax, v);
+      r.add(v);
   }
-  return ymax;
+  return r;
+}
+
+double axis_min(std::vector<DataSeries> const &series, std::vector<bool> const &use_y2,
+                bool secondary, bool begin_at_zero) {
+  auto r = axis_range(series, use_y2, secondary);
+  if (!r.any)
+    return 0.0;
+  return begin_at_zero ? std::min(0.0, r.lo) : r.lo;
+}
+
+double axis_max(std::vector<DataSeries> const &series, std::vector<bool> const &use_y2,
+                bool secondary) {
+  return axis_range(series, use_y2, secondary).max_from_zero();
 }
 
 } // namespace

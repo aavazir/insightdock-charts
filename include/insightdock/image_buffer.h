@@ -33,8 +33,19 @@ public:
    * @brief Allocate a cleared transparent buffer.
    * @param width  Pixel width.
    * @param height Pixel height.
+   *
+   * If `width * height` exceeds @ref kMaxPixels the result is an empty (0×0) buffer rather than
+   * a multi-gigabyte allocation; exporters report this as an error.
    */
   ImageBuffer(std::size_t width, std::size_t height);
+
+  /** @brief Largest buffer (in pixels) the library will allocate (~512 MB of RGBA). */
+  static constexpr std::size_t kMaxPixels = std::size_t{1} << 27;
+
+  /** @brief True if a `width × height` buffer is within @ref kMaxPixels (overflow-safe). */
+  static constexpr bool dimensions_ok(std::size_t width, std::size_t height) {
+    return width == 0 || height <= kMaxPixels / width;
+  }
 
   /** @brief Width in pixels. */
   std::size_t width() const {

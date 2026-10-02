@@ -10,7 +10,16 @@ namespace insightdock::charts {
 
 namespace {
 
+// Hard caps keep tick generation bounded for pathological domains (huge ranges, tiny steps).
+constexpr int kMaxTicks = 1000;
+
+bool finite_domain(double lo, double hi) {
+  return std::isfinite(lo) && std::isfinite(hi);
+}
+
 double nice_num(double range, bool round) {
+  if (!(range > 0.0) || !std::isfinite(range))
+    return 1.0;
   double exp = std::floor(std::log10(range));
   double f = range / std::pow(10.0, exp);
   double nf;
@@ -84,9 +93,18 @@ double value_from_t(ScaleType type, double min_val, double max_val, double t) {
 } // namespace
 
 Scale::Scale(double min_val, double max_val, float pixel_min, float pixel_max)
-    : min_(min_val), max_(max_val), pixel_min_(pixel_min), pixel_max_(pixel_max) {}
+    : min_(min_val), max_(max_val), pixel_min_(pixel_min), pixel_max_(pixel_max) {
+  if (!finite_domain(min_, max_)) {
+    min_ = 0.0;
+    max_ = 1.0;
+  }
+}
 
 void Scale::set_domain(double min_val, double max_val) {
+  if (!finite_domain(min_val, max_val)) {
+    min_val = 0.0;
+    max_val = 1.0;
+  }
   min_ = min_val;
   max_ = max_val;
 }
@@ -112,6 +130,7 @@ double Scale::from_pixel(float pixel) const {
 
 std::vector<double> Scale::nice_ticks(int max_ticks) const {
   std::vector<double> ticks;
+  max_ticks = std::max(1, std::min(max_ticks, kMaxTicks));
   if (max_ <= min_ && type_ != ScaleType::Log) {
     ticks.push_back(min_);
     return ticks;
@@ -119,7 +138,8 @@ std::vector<double> Scale::nice_ticks(int max_ticks) const {
 
   if (type_ == ScaleType::Log) {
     double lo = clamp_positive(min_, 1e-300);
-    double hi = clamp_positive(max_, lo * 10.0);
+    lo = std::min(lo, 1e300);
+    double hi = std::min(clamp_positive(max_, lo * 10.0), 1e308);
     int exp_lo = static_cast<int>(std::floor(std::log10(lo)));
     int exp_hi = static_cast<int>(std::ceil(std::log10(hi)));
     for (int e = exp_lo; e <= exp_hi; ++e) {
@@ -154,7 +174,7 @@ std::vector<double> Scale::nice_ticks(int max_ticks) const {
     }
     double start = std::ceil(min_ / step) * step;
     double limit = max_ + step * 0.5;
-    for (int i = 0; start + static_cast<double>(i) * step <= limit; ++i) {
+    for (int i = 0; i < kMaxTicks && start + static_cast<double>(i) * step <= limit; ++i) {
       double v = start + static_cast<double>(i) * step;
       if (v >= min_ - step * 0.5 && v <= limit)
         ticks.push_back(v);
@@ -170,7 +190,7 @@ std::vector<double> Scale::nice_ticks(int max_ticks) const {
   double step = nice_num(range / static_cast<double>(max_ticks), true);
   double start = std::ceil(min_ / step) * step;
   double limit = max_ + step * 0.5;
-  for (int i = 0; start + static_cast<double>(i) * step <= limit; ++i) {
+  for (int i = 0; i < kMaxTicks && start + static_cast<double>(i) * step <= limit; ++i) {
     double v = start + static_cast<double>(i) * step;
     if (v >= min_ - step * 0.5 && v <= limit)
       ticks.push_back(v);
@@ -184,6 +204,10 @@ std::vector<double> Scale::nice_ticks(int max_ticks) const {
 
 Scale Scale::linear_nice(double data_min, double data_max, float pixel_min, float pixel_max,
                          int max_ticks) {
+  if (!finite_domain(data_min, data_max)) {
+    data_min = 0.0;
+    data_max = 1.0;
+  }
   if (data_max <= data_min) {
     if (data_max == data_min) {
       data_min -= 1.0;
@@ -208,7 +232,7 @@ Scale Scale::linear_nice(double data_min, double data_max, float pixel_min, floa
     // point sits between two labelled gridlines rather than above the last one.
     if (nice_max < data_max && ticks.size() >= 2) {
       double step = ticks.back() - ticks[ticks.size() - 2];
-      while (nice_max < data_max)
+      for (int i = 0; i < kMaxTicks && step > 0.0 && nice_max < data_max; ++i)
         nice_max += step;
     }
     s.set_domain(nice_min, nice_max);
@@ -218,6 +242,10 @@ Scale Scale::linear_nice(double data_min, double data_max, float pixel_min, floa
 
 Scale Scale::log_nice(double data_min, double data_max, float pixel_min, float pixel_max,
                       int max_ticks) {
+  if (!finite_domain(data_min, data_max)) {
+    data_min = 1.0;
+    data_max = 10.0;
+  }
   data_min = clamp_positive(data_min, 1e-300);
   data_max = clamp_positive(data_max, data_min * 1.001);
   if (data_max <= data_min)

@@ -14,7 +14,7 @@ Three variables let you trim the library for size-constrained targets:
 
 | Variable | Default | Options | Effect |
 |---|---|---|---|
-| `CHART_TYPES` | `pie bar line` | any subset | Omitted types are not compiled |
+| `CHART_TYPES` | `pie bar line area scatter` | any subset (`bar`+`line` also builds combo) | Omitted types are not compiled |
 | `EXPORT_FORMATS` | `png jpeg` | `png` or `png jpeg` | Omitting `jpeg` drops ~15 KB |
 | `FONT_MODE` | `embedded` | `embedded` \| `system` | `system` drops the baked-in 20 KB TTF |
 
@@ -26,13 +26,10 @@ make CXX=mips-openwrt-linux-musl-g++ AR=mips-openwrt-linux-musl-gcc-ar \
      CXXFLAGS="-std=c++17 -Os -ffunction-sections -fdata-sections -Wall"
 ```
 
-When `FONT_MODE=system`, load a TTF at startup before rendering any chart:
-
-```cpp
-insightdock::charts::Font font;
-font.load_from_file("/www/assets/fonts/OpenSans-Regular.ttf");
-// assign to ChartOptions::font before calling ChartExporter::save()
-```
+When `FONT_MODE=system`, no font is baked in, so text will not render until a TTF is supplied.
+`Font::load_from_file()` exists, but charts do not yet accept an injected `Font` — a font option on
+`ChartOptions` is tracked on the [roadmap](ROADMAP.md) and lands before 1.0. Use `FONT_MODE=embedded`
+(the default) until then.
 
 | Configuration | Code section (unstripped) |
 |---|---|

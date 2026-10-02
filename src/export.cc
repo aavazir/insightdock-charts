@@ -124,8 +124,21 @@ private:
 #endif
 };
 
+constexpr int kMaxSupersample = 8;
+
+// True if rendering at the requested supersample factor stays within ImageBuffer's size cap.
+bool render_size_ok(Chart const &chart, ExportOptions const &opts) {
+  std::size_t ss = static_cast<std::size_t>(std::clamp(opts.supersample, 1, kMaxSupersample));
+  auto const &o = chart.options();
+  if (o.width > ImageBuffer::kMaxPixels || o.height > ImageBuffer::kMaxPixels)
+    return false;
+  return ImageBuffer::dimensions_ok(o.width * ss, o.height * ss);
+}
+
 ImageBuffer render_mutable(Chart &chart, ExportOptions const &opts) {
-  int ss = std::max(1, opts.supersample);
+  if (!render_size_ok(chart, opts))
+    return ImageBuffer();
+  int ss = std::clamp(opts.supersample, 1, kMaxSupersample);
   SupersampleScope scope(chart, ss);
   ImageBuffer img = chart.render();
   if (ss > 1)
@@ -320,6 +333,8 @@ ImageBuffer ChartExporter::render(Chart &chart, ExportOptions const &opts) {
 }
 
 ImageBuffer ChartExporter::render(Chart const &chart, ExportOptions const &opts) {
+  if (!render_size_ok(chart, opts))
+    return ImageBuffer();
   if (opts.supersample > 1)
     return render_mutable(const_cast<Chart &>(chart), opts);
   return chart.render();
@@ -353,6 +368,8 @@ ChartResult<void> ChartExporter::save(Chart &chart, std::string const &path, Exp
     return save_svg_vector_page(chart, path) ? R::success() : R::failure(ChartError::EncodeFailure);
   }
 
+  if (!render_size_ok(chart, opts))
+    return R::failure(ChartError::InvalidInput);
   ImageBuffer img = render_mutable(chart, opts);
   if (img.width() == 0 || img.height() == 0)
     return R::failure(ChartError::RenderFailure);
@@ -378,6 +395,8 @@ ChartResult<std::vector<uint8_t>> ChartExporter::encode(Chart &chart, ExportOpti
     return bytes.empty() ? R::failure(ChartError::EncodeFailure) : R::success(std::move(bytes));
   }
 
+  if (!render_size_ok(chart, opts))
+    return R::failure(ChartError::InvalidInput);
   ImageBuffer img = render_mutable(chart, opts);
   if (img.width() == 0 || img.height() == 0)
     return R::failure(ChartError::RenderFailure);

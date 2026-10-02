@@ -2,6 +2,7 @@
 // Copyright (c) InsightDock contributors
 
 #include "insightdock/cartesian_chart.h"
+#include "insightdock/detail/finite_range.h"
 #include "insightdock/detail/tick_format.h"
 #include "insightdock/palette.h"
 
@@ -58,36 +59,28 @@ void CartesianChart::clear_series() {
 }
 
 double CartesianChart::compute_y_min() const {
-  double ymin = 0.0;
-  bool any = false;
+  detail::FiniteRange r;
   for (auto const &s : series_) {
-    for (double v : s.values) {
-      if (!any) {
-        ymin = v;
-        any = true;
-      } else
-        ymin = std::min(ymin, v);
-    }
+    for (double v : s.values)
+      r.add(v);
   }
-  if (!any)
+  if (!r.any)
     return 0.0;
   // A log domain can't include or approach zero (log(0) is undefined), so
   // begin_at_zero is meaningless there regardless of the caller's setting —
   // forcing it anyway would stretch the domain across hundreds of decades.
   if (cartesian_.begin_at_zero && cartesian_.y_scale_type != ScaleType::Log)
-    return std::min(0.0, ymin);
-  return ymin;
+    return std::min(0.0, r.lo);
+  return r.lo;
 }
 
 double CartesianChart::compute_y_max() const {
-  double ymax = 0.0;
+  detail::FiniteRange r;
   for (auto const &s : series_) {
-    for (double v : s.values) {
-      if (v > ymax)
-        ymax = v;
-    }
+    for (double v : s.values)
+      r.add(v);
   }
-  return ymax;
+  return r.max_from_zero();
 }
 
 Rect CartesianChart::compute_plot_rect(ImageBuffer const &buf, Font const &font) const {
@@ -354,14 +347,14 @@ ImageBuffer CartesianChart::render() const {
     // domain max at the right — same swapped-argument convention as the left-to-right
     // x_scale below).
     y_scale = cartesian_.y_scale_type == ScaleType::Log
-                 ? Scale::log_nice(ymin, ymax, plot.right(), plot.left(), yticks)
-                 : Scale::linear_nice(ymin, ymax, plot.right(), plot.left(), yticks);
+                  ? Scale::log_nice(ymin, ymax, plot.right(), plot.left(), yticks)
+                  : Scale::linear_nice(ymin, ymax, plot.right(), plot.left(), yticks);
   } else {
     // pixel_min = plot.top()   (small y, physically at top)   → where data_max maps
     // pixel_max = plot.bottom() (large y, physically at bottom) → where data_min maps
     y_scale = cartesian_.y_scale_type == ScaleType::Log
-                 ? Scale::log_nice(ymin, ymax, plot.top(), plot.bottom(), yticks)
-                 : Scale::linear_nice(ymin, ymax, plot.top(), plot.bottom(), yticks);
+                  ? Scale::log_nice(ymin, ymax, plot.top(), plot.bottom(), yticks)
+                  : Scale::linear_nice(ymin, ymax, plot.top(), plot.bottom(), yticks);
   }
 
   bool continuous_x = supports_continuous_x_axis() &&
@@ -391,9 +384,8 @@ ImageBuffer CartesianChart::render() const {
   if (has_y2)
     y_scale2 = Scale::linear_nice(compute_y2_min(), compute_y2_max(), plot.top(), plot.bottom(), 6);
 
-  PlotContext ctx{buf,          plot,       x_scale,      y_scale,     y_scale2,    has_y2,
-                  continuous_x, horizontal, font,         options_,    cartesian_,  categories_,
-                  series_,      x_values_};
+  PlotContext ctx{buf,        plot, x_scale,  y_scale,    y_scale2,    has_y2,  continuous_x,
+                  horizontal, font, options_, cartesian_, categories_, series_, x_values_};
   draw_axes_and_grid(ctx);
   draw_series(ctx);
   draw_overlay(ctx);

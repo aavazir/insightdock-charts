@@ -41,7 +41,13 @@ jobs:
           exit $status
 
   build-and-test:
-    runs-on: ubuntu-latest
+    # arm64 matters: float->int overflow saturates there (x86 yields INT_MIN), which is how
+    # OpenWrt-class targets would behave on hostile data.
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - name: Configure
@@ -67,7 +73,7 @@ jobs:
             -DCMAKE_BUILD_TYPE=RelWithDebInfo \
             -DINSIGHTDOCK_BUILD_TESTS=ON \
             -DINSIGHTDOCK_WERROR=OFF \
-            "-DCMAKE_CXX_FLAGS=-fsanitize=address,undefined -fno-omit-frame-pointer" \
+            "-DCMAKE_CXX_FLAGS=-fsanitize=address,undefined,float-cast-overflow,float-divide-by-zero -fno-sanitize-recover=undefined,float-cast-overflow -fno-omit-frame-pointer" \
             "-DCMAKE_EXE_LINKER_FLAGS=-fsanitize=address,undefined"
       - name: Build
         run: cmake --build build-san -j"$(nproc)"
@@ -76,3 +82,15 @@ jobs:
           ASAN_OPTIONS: detect_leaks=0
           UBSAN_OPTIONS: print_stacktrace=1
         run: ctest --test-dir build-san --output-on-failure
+
+  make-build:
+    # The minimal Makefile build (OpenWrt / embedded) must stay in sync with CMake.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Default configuration (all chart types) + unit tests
+        run: make -j"$(nproc)" test
+      - name: Minimal configuration (pie only, PNG only, system font)
+        run: |
+          make clean
+          make -j"$(nproc)" lib CHART_TYPES="pie" EXPORT_FORMATS="png" FONT_MODE=system

@@ -7,9 +7,11 @@ CXX ?= g++
 AR  ?= ar
 
 # ── Feature selection ──────────────────────────────────────────────────────────
-# Chart types to compile in (space-separated subset of: pie bar line scatter).
+# Chart types to compile in (space-separated subset of: pie bar line area scatter).
+# 'bar', 'line' and 'area' share the Cartesian base; 'combo' (bar+line overlay) is
+# built whenever both bar and line are selected.
 # Omit types you don't need to shrink the library.
-CHART_TYPES    ?= pie bar line
+CHART_TYPES    ?= pie bar line area scatter
 
 # Export formats to compile in (space-separated subset of: png jpeg).
 # png is always required. Omit jpeg to drop ~15 KB of JPEG codec.
@@ -23,6 +25,8 @@ FONT_MODE      ?= embedded
 # ──────────────────────────────────────────────────────────────────────────────
 
 CXXFLAGS ?= -std=c++17 -O2 -Wall -Wextra
+# Header dependency tracking so editing a public header rebuilds dependants.
+DEPFLAGS  = -MMD -MP
 INCLUDES  = -I include -I third_party
 
 # ── Core sources (always compiled) ────────────────────────────────────────────
@@ -47,23 +51,23 @@ ifneq ($(filter pie,$(CHART_TYPES)),)
   CXXFLAGS += -DINSIGHTDOCK_HAS_PIE
 endif
 
-ifneq ($(filter bar line,$(CHART_TYPES)),)
+ifneq ($(filter bar line area,$(CHART_TYPES)),)
   SRCS += src/cartesian_chart.cc
 endif
 ifneq ($(filter bar,$(CHART_TYPES)),)
   SRCS     += src/bar_chart.cc
-  CXXFLAGS += -DINSIGHTDOCK_HAS_BAR
 endif
 ifneq ($(filter line,$(CHART_TYPES)),)
   SRCS     += src/line_chart.cc
-  CXXFLAGS += -DINSIGHTDOCK_HAS_LINE
 endif
-ifneq ($(filter bar line,$(CHART_TYPES)),)
+ifneq ($(filter area,$(CHART_TYPES)),)
+  SRCS     += src/area_chart.cc
+endif
+ifeq ($(words $(filter bar line,$(CHART_TYPES))),2)
   SRCS += src/combo_chart.cc
 endif
 ifneq ($(filter scatter,$(CHART_TYPES)),)
   SRCS     += src/scatter_chart.cc
-  CXXFLAGS += -DINSIGHTDOCK_HAS_SCATTER
 endif
 
 # ── Export formats ────────────────────────────────────────────────────────────
@@ -90,7 +94,7 @@ $(LIB): $(OBJS)
 	$(AR) rcs $@ $(OBJS)
 
 %.o: %.cc
-	$(CXX) $(CXXFLAGS) $(INCLUDES) -c $< -o $@
+	$(CXX) $(CXXFLAGS) $(DEPFLAGS) $(INCLUDES) -c $< -o $@
 
 # ── Examples (only built when required chart type is present) ─────────────────
 EXAMPLES :=
@@ -110,11 +114,18 @@ example_main: examples/main.cc $(LIB)
 bar_line_example: examples/bar_line_example.cc $(LIB)
 	$(CXX) $(CXXFLAGS) $(INCLUDES) examples/bar_line_example.cc $(LIB) -o $@
 
-test: examples
+unit_tests: tests/unit_tests.cc $(LIB)
+	$(CXX) $(CXXFLAGS) $(INCLUDES) tests/unit_tests.cc $(LIB) -o $@
+
+# Unit tests need every chart type (the default CHART_TYPES).
+test: examples unit_tests
 	./example_main
 	@test -f chart_output.png
+	./unit_tests
 
 clean:
-	rm -f $(OBJS) $(LIB) example_main bar_line_example *.png *.jpg
+	rm -f $(OBJS) $(OBJS:.o=.d) $(LIB) example_main bar_line_example unit_tests *.png *.jpg
 
 # PoDoFo support requires CMake — see CLAUDE.md.
+
+-include $(OBJS:.o=.d)

@@ -75,6 +75,8 @@ ImageBuffer ScatterChart::render() const {
   bool any_radius = false;
   for (auto const &s : series_) {
     for (auto const &p : s.points) {
+      if (!std::isfinite(p.x) || !std::isfinite(p.y))
+        continue;
       if (!any) {
         xmin = xmax = p.x;
         ymin = ymax = p.y;
@@ -85,7 +87,7 @@ ImageBuffer ScatterChart::render() const {
         ymin = std::min(ymin, p.y);
         ymax = std::max(ymax, p.y);
       }
-      if (p.radius > 0.0) {
+      if (p.radius > 0.0 && std::isfinite(p.radius)) {
         if (!any_radius) {
           rmin = rmax = p.radius;
           any_radius = true;

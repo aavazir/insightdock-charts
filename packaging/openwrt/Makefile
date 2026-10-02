@@ -17,7 +17,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=insightdock
-PKG_VERSION:=1.0.0
+PKG_VERSION:=0.7.0
 PKG_RELEASE:=1
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz

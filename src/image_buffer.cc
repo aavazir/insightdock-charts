@@ -12,6 +12,61 @@ namespace insightdock::charts {
 
 namespace {
 
+// Beyond this magnitude (pixels) geometry cannot land on a real buffer; clamping before the
+// float -> int cast avoids undefined behaviour on huge or non-finite coordinates.
+constexpr float kCoordLimit = 1.0e7f;
+// Segments longer than this are clipped to the buffer before rasterisation.
+constexpr float kMaxSegmentLen = 20000.0f;
+// Dash cycles shorter than this render as a solid line (and would otherwise take unbounded steps).
+constexpr float kMinDashCycle = 0.25f;
+
+int to_int_floor(float v) {
+  if (!std::isfinite(v))
+    return 0;
+  return static_cast<int>(std::floor(std::max(-kCoordLimit, std::min(kCoordLimit, v))));
+}
+
+int to_int_ceil(float v) {
+  if (!std::isfinite(v))
+    return 0;
+  return static_cast<int>(std::ceil(std::max(-kCoordLimit, std::min(kCoordLimit, v))));
+}
+
+// Clips the segment to [-m, w+m] x [-m, h+m] (Liang-Barsky). Returns false if nothing remains.
+// t0/t1 are the retained parametric range along the original segment.
+bool clip_segment(float &x0, float &y0, float &x1, float &y1, float w, float h, float m, float &t0,
+                  float &t1) {
+  double dx = static_cast<double>(x1) - x0;
+  double dy = static_cast<double>(y1) - y0;
+  double lo = 0.0, hi = 1.0;
+  double const p[4] = {-dx, dx, -dy, dy};
+  double const q[4] = {x0 - (-static_cast<double>(m)), (w + static_cast<double>(m)) - x0,
+                       y0 - (-static_cast<double>(m)), (h + static_cast<double>(m)) - y0};
+  for (int i = 0; i < 4; ++i) {
+    if (p[i] == 0.0) {
+      if (q[i] < 0.0)
+        return false;
+    } else {
+      double r = q[i] / p[i];
+      if (p[i] < 0.0)
+        lo = std::max(lo, r);
+      else
+        hi = std::min(hi, r);
+    }
+  }
+  if (lo > hi)
+    return false;
+  float nx0 = static_cast<float>(x0 + lo * dx), ny0 = static_cast<float>(y0 + lo * dy);
+  float nx1 = static_cast<float>(x0 + hi * dx), ny1 = static_cast<float>(y0 + hi * dy);
+  x0 = nx0;
+  y0 = ny0;
+  x1 = nx1;
+  y1 = ny1;
+  t0 = static_cast<float>(lo);
+  t1 = static_cast<float>(hi);
+  return true;
+}
+
 void blend_pixel_raw(uint8_t *dst, uint8_t sr, uint8_t sg, uint8_t sb, uint8_t sa) {
   float fa = sa / 255.0f;
   float sr2 = sr * fa;
@@ -39,10 +94,10 @@ void blend_pixel_raw(uint8_t *dst, uint8_t sr, uint8_t sg, uint8_t sb, uint8_t s
 }
 
 void plot_aa(ImageBuffer &img, float x, float y, Color const &color, float coverage) {
-  if (coverage <= 0.0f)
+  if (!(coverage > 0.0f) || !std::isfinite(x) || !std::isfinite(y))
     return;
-  int ix = static_cast<int>(std::floor(x));
-  int iy = static_cast<int>(std::floor(y));
+  int ix = to_int_floor(x);
+  int iy = to_int_floor(y);
   if (ix < 0 || iy < 0 || static_cast<std::size_t>(ix) >= img.width() ||
       static_cast<std::size_t>(iy) >= img.height()) {
     return;
@@ -58,9 +113,23 @@ void plot_aa(ImageBuffer &img, float x, float y, Color const &color, float cover
 // Xiaolin Wu style simplified: distance-to-segment coverage per pixel.
 void draw_thick_segment(ImageBuffer &img, float x0, float y0, float x1, float y1, float width,
                         Color const &color) {
+  if (!std::isfinite(x0) || !std::isfinite(y0) || !std::isfinite(x1) || !std::isfinite(y1) ||
+      !std::isfinite(width))
+    return;
   float dx = x1 - x0;
   float dy = y1 - y0;
   float len = std::sqrt(dx * dx + dy * dy);
+  if (len > kMaxSegmentLen) {
+    // Only the visible part matters; trimming keeps the sampling loop bounded.
+    float t0, t1;
+    float margin = width + 2.0f;
+    if (!clip_segment(x0, y0, x1, y1, static_cast<float>(img.width()),
+                      static_cast<float>(img.height()), margin, t0, t1))
+      return;
+    dx = x1 - x0;
+    dy = y1 - y0;
+    len = std::sqrt(dx * dx + dy * dy);
+  }
   if (len < 1e-6f) {
     plot_aa(img, x0, y0, color, 1.0f);
     return;
@@ -90,8 +159,13 @@ void draw_thick_segment(ImageBuffer &img, float x0, float y0, float x1, float y1
 
 ImageBuffer::ImageBuffer() : width_(0), height_(0) {}
 
-ImageBuffer::ImageBuffer(std::size_t width, std::size_t height)
-    : width_(width), height_(height), data_(width * height * 4, 0) {}
+ImageBuffer::ImageBuffer(std::size_t width, std::size_t height) {
+  if (!dimensions_ok(width, height))
+    return;
+  width_ = width;
+  height_ = height;
+  data_.assign(width * height * 4, 0);
+}
 
 uint8_t *ImageBuffer::pixel(std::size_t x, std::size_t y) {
   if (x >= width_ || y >= height_)
@@ -123,15 +197,16 @@ void ImageBuffer::clear(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
 
 void ImageBuffer::blend_pixel(std::size_t x, std::size_t y, uint8_t r, uint8_t g, uint8_t b,
                               float alpha) {
-  if (x >= width_ || y >= height_ || alpha <= 0.0f)
+  if (x >= width_ || y >= height_ || !(alpha > 0.0f))
     return;
   uint8_t sa = static_cast<uint8_t>(std::min(1.0f, alpha) * 255.0f + 0.5f);
   blend_pixel_raw(pixel(x, y), r, g, b, sa);
 }
 
 void ImageBuffer::fill_rect(float x, float y, float w, float h, Color const &color) {
-  fill_rect(static_cast<int>(std::floor(x)), static_cast<int>(std::floor(y)),
-            static_cast<int>(std::ceil(w)), static_cast<int>(std::ceil(h)), color);
+  if (!std::isfinite(x) || !std::isfinite(y) || !std::isfinite(w) || !std::isfinite(h))
+    return;
+  fill_rect(to_int_floor(x), to_int_floor(y), to_int_ceil(w), to_int_ceil(h), color);
 }
 
 void ImageBuffer::fill_rect(int x, int y, int w, int h, Color const &color) {
@@ -139,8 +214,10 @@ void ImageBuffer::fill_rect(int x, int y, int w, int h, Color const &color) {
     return;
   int x0 = std::max(0, x);
   int y0 = std::max(0, y);
-  int x1 = std::min(static_cast<int>(width_), x + w);
-  int y1 = std::min(static_cast<int>(height_), y + h);
+  int x1 = static_cast<int>(
+      std::min<long long>(static_cast<long long>(width_), static_cast<long long>(x) + w));
+  int y1 = static_cast<int>(
+      std::min<long long>(static_cast<long long>(height_), static_cast<long long>(y) + h));
   float fa = color.a / 255.0f;
   for (int py = y0; py < y1; ++py) {
     for (int px = x0; px < x1; ++px) {
@@ -159,6 +236,10 @@ void ImageBuffer::fill_polygon(std::pair<float, float> const *points, std::size_
                                uint8_t g, uint8_t b, uint8_t a) {
   if (count < 3 || width_ == 0 || height_ == 0)
     return;
+  for (std::size_t i = 0; i < count; ++i) {
+    if (!std::isfinite(points[i].first) || !std::isfinite(points[i].second))
+      return;
+  }
 
   float ymin = points[0].second, ymax = points[0].second;
   float xmin = points[0].first, xmax = points[0].first;
@@ -169,10 +250,10 @@ void ImageBuffer::fill_polygon(std::pair<float, float> const *points, std::size_
     xmax = std::max(xmax, points[i].first);
   }
 
-  int y0 = std::max(0, static_cast<int>(std::floor(ymin)));
-  int y1 = std::min(static_cast<int>(height_ - 1), static_cast<int>(std::ceil(ymax)));
-  int x0 = std::max(0, static_cast<int>(std::floor(xmin)));
-  int x1 = std::min(static_cast<int>(width_ - 1), static_cast<int>(std::ceil(xmax)));
+  int y0 = std::max(0, to_int_floor(ymin));
+  int y1 = std::min(static_cast<int>(height_ - 1), to_int_ceil(ymax));
+  int x0 = std::max(0, to_int_floor(xmin));
+  int x1 = std::min(static_cast<int>(width_ - 1), to_int_ceil(xmax));
 
   float fa = a / 255.0f;
 
@@ -185,11 +266,11 @@ void ImageBuffer::fill_polygon(std::pair<float, float> const *points, std::size_
       if (yi <= y && yj > y) {
         float x = points[i].first +
                   static_cast<float>(y - yi) / (yj - yi) * (points[j].first - points[i].first);
-        crossings.push_back(static_cast<int>(std::floor(x)));
+        crossings.push_back(to_int_floor(x));
       } else if (yj <= y && yi > y) {
         float x = points[i].first +
                   static_cast<float>(y - yi) / (yj - yi) * (points[j].first - points[i].first);
-        crossings.push_back(static_cast<int>(std::floor(x)));
+        crossings.push_back(to_int_floor(x));
       }
     }
     std::sort(crossings.begin(), crossings.end());
@@ -232,17 +313,8 @@ void ImageBuffer::draw_polygon_outline(std::pair<float, float> const *points, st
 
 namespace {
 
-// Draws the on/off runs of a dashed segment, advancing `running` (cumulative distance since the
-// start of the dash cycle) so a caller can chain segments (polyline vertices) with a continuous
-// pattern instead of restarting the cycle at each vertex.
-void draw_dashed_segment(ImageBuffer &img, float x0, float y0, float x1, float y1, float width,
-                         Color const &color, std::vector<float> const &dash, float total,
-                         float &running) {
-  float dx = x1 - x0;
-  float dy = y1 - y0;
-  float len = std::sqrt(dx * dx + dy * dy);
-  if (len < 1e-6f)
-    return;
+void emit_dashes(ImageBuffer &img, float x0, float y0, float dx, float dy, float len, float width,
+                 Color const &color, std::vector<float> const &dash, float total, float &running) {
   float ux = dx / len;
   float uy = dy / len;
   float pos = 0.0f;
@@ -274,6 +346,44 @@ void draw_dashed_segment(ImageBuffer &img, float x0, float y0, float x1, float y
   }
 }
 
+// Draws the on/off runs of a dashed segment, advancing `running` (cumulative distance since the
+// start of the dash cycle) so a caller can chain segments (polyline vertices) with a continuous
+// pattern instead of restarting the cycle at each vertex.
+void draw_dashed_segment(ImageBuffer &img, float x0, float y0, float x1, float y1, float width,
+                         Color const &color, std::vector<float> const &dash, float total,
+                         float &running) {
+  if (!std::isfinite(x0) || !std::isfinite(y0) || !std::isfinite(x1) || !std::isfinite(y1) ||
+      !std::isfinite(width))
+    return;
+  float dx = x1 - x0;
+  float dy = y1 - y0;
+  float len = std::sqrt(dx * dx + dy * dy);
+  if (len < 1e-6f)
+    return;
+  if (len > kMaxSegmentLen) {
+    // Trim to the visible part but keep the dash phase continuous.
+    float t0, t1;
+    if (!clip_segment(x0, y0, x1, y1, static_cast<float>(img.width()),
+                      static_cast<float>(img.height()), width + 2.0f, t0, t1)) {
+      running += len;
+      return;
+    }
+    running += t0 * len;
+    float tail = (1.0f - t1) * len;
+    dx = x1 - x0;
+    dy = y1 - y0;
+    len = std::sqrt(dx * dx + dy * dy);
+    if (len < 1e-6f) {
+      running += tail;
+      return;
+    }
+    emit_dashes(img, x0, y0, dx, dy, len, width, color, dash, total, running);
+    running += tail;
+    return;
+  }
+  emit_dashes(img, x0, y0, dx, dy, len, width, color, dash, total, running);
+}
+
 float dash_total_length(std::vector<float> const &dash) {
   float total = 0.0f;
   for (float d : dash)
@@ -286,7 +396,7 @@ float dash_total_length(std::vector<float> const &dash) {
 void ImageBuffer::draw_dashed_line(float x0, float y0, float x1, float y1, float width,
                                    Color const &color, std::vector<float> const &dash) {
   float total = dash_total_length(dash);
-  if (dash.empty() || total <= 1e-6f) {
+  if (dash.empty() || !std::isfinite(total) || total < kMinDashCycle) {
     draw_line(x0, y0, x1, y1, width, color);
     return;
   }
@@ -300,7 +410,7 @@ void ImageBuffer::draw_dashed_polyline(std::pair<float, float> const *points, st
   if (count < 2)
     return;
   float total = dash_total_length(dash);
-  if (dash.empty() || total <= 1e-6f) {
+  if (dash.empty() || !std::isfinite(total) || total < kMinDashCycle) {
     draw_polyline(points, count, width, color);
     return;
   }
@@ -327,24 +437,22 @@ bool angle_in_sector(double ang, double start, double end) {
     return false;
   if (span > 2.0 * M_PI)
     span = 2.0 * M_PI;
-  double rel = ang - start;
-  while (rel < 0)
+  double rel = std::fmod(ang - start, 2.0 * M_PI);
+  if (rel < 0)
     rel += 2.0 * M_PI;
-  while (rel >= 2.0 * M_PI)
-    rel -= 2.0 * M_PI;
   return rel <= span + 1e-9;
 }
 
 } // namespace
 
 void ImageBuffer::fill_circle(float cx, float cy, float radius, Color const &color) {
-  if (radius <= 0.0f)
+  if (!(radius > 0.0f) || !std::isfinite(radius) || !std::isfinite(cx) || !std::isfinite(cy))
     return;
   constexpr float kAa = 1.0f;
-  int x0 = std::max(0, static_cast<int>(std::floor(cx - radius - kAa)));
-  int y0 = std::max(0, static_cast<int>(std::floor(cy - radius - kAa)));
-  int x1 = std::min(static_cast<int>(width_) - 1, static_cast<int>(std::ceil(cx + radius + kAa)));
-  int y1 = std::min(static_cast<int>(height_) - 1, static_cast<int>(std::ceil(cy + radius + kAa)));
+  int x0 = std::max(0, to_int_floor(cx - radius - kAa));
+  int y0 = std::max(0, to_int_floor(cy - radius - kAa));
+  int x1 = std::min(static_cast<int>(width_) - 1, to_int_ceil(cx + radius + kAa));
+  int y1 = std::min(static_cast<int>(height_) - 1, to_int_ceil(cy + radius + kAa));
   float fa = color.a / 255.0f;
   for (int y = y0; y <= y1; ++y) {
     for (int x = x0; x <= x1; ++x) {
@@ -373,13 +481,15 @@ void ImageBuffer::fill_circle(float cx, float cy, float radius, Color const &col
 
 void ImageBuffer::fill_sector(float cx, float cy, float radius, double start_rad, double end_rad,
                               Color const &color) {
-  if (radius <= 0.0f)
+  if (!std::isfinite(start_rad) || !std::isfinite(end_rad))
+    return;
+  if (!(radius > 0.0f) || !std::isfinite(radius) || !std::isfinite(cx) || !std::isfinite(cy))
     return;
   constexpr float kAa = 1.0f;
-  int x0 = std::max(0, static_cast<int>(std::floor(cx - radius - kAa)));
-  int y0 = std::max(0, static_cast<int>(std::floor(cy - radius - kAa)));
-  int x1 = std::min(static_cast<int>(width_) - 1, static_cast<int>(std::ceil(cx + radius + kAa)));
-  int y1 = std::min(static_cast<int>(height_) - 1, static_cast<int>(std::ceil(cy + radius + kAa)));
+  int x0 = std::max(0, to_int_floor(cx - radius - kAa));
+  int y0 = std::max(0, to_int_floor(cy - radius - kAa));
+  int x1 = std::min(static_cast<int>(width_) - 1, to_int_ceil(cx + radius + kAa));
+  int y1 = std::min(static_cast<int>(height_) - 1, to_int_ceil(cy + radius + kAa));
   float fa = color.a / 255.0f;
 
   for (int y = y0; y <= y1; ++y) {
@@ -412,7 +522,8 @@ void ImageBuffer::fill_sector(float cx, float cy, float radius, double start_rad
 
 void ImageBuffer::fill_rounded_rect(float x, float y, float w, float h, float radius,
                                     Color const &color) {
-  if (w <= 0.0f || h <= 0.0f)
+  if (!(w > 0.0f) || !(h > 0.0f) || !std::isfinite(x) || !std::isfinite(y) || !std::isfinite(w) ||
+      !std::isfinite(h) || !std::isfinite(radius))
     return;
   radius = std::max(0.0f, std::min(radius, std::min(w, h) * 0.5f));
   if (radius <= 0.0f) {
@@ -420,10 +531,10 @@ void ImageBuffer::fill_rounded_rect(float x, float y, float w, float h, float ra
     return;
   }
   constexpr float kAa = 1.0f;
-  int x0 = std::max(0, static_cast<int>(std::floor(x - kAa)));
-  int y0 = std::max(0, static_cast<int>(std::floor(y - kAa)));
-  int x1 = std::min(static_cast<int>(width_) - 1, static_cast<int>(std::ceil(x + w + kAa)));
-  int y1 = std::min(static_cast<int>(height_) - 1, static_cast<int>(std::ceil(y + h + kAa)));
+  int x0 = std::max(0, to_int_floor(x - kAa));
+  int y0 = std::max(0, to_int_floor(y - kAa));
+  int x1 = std::min(static_cast<int>(width_) - 1, to_int_ceil(x + w + kAa));
+  int y1 = std::min(static_cast<int>(height_) - 1, to_int_ceil(y + h + kAa));
   float cx = x + w * 0.5f;
   float cy = y + h * 0.5f;
   float hx = w * 0.5f - radius;
