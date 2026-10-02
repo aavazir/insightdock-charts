@@ -17,7 +17,7 @@ Three variables control what gets compiled into the library:
 |---|---|---|
 | `CHART_TYPES` | `pie bar line area scatter` | Space-separated subset; omit types to shrink the archive (`combo` is built whenever both `bar` and `line` are) |
 | `EXPORT_FORMATS` | `png jpeg` | Omit `jpeg` to drop ~15 KB of JPEG codec |
-| `FONT_MODE` | `embedded` | `system` drops the baked-in 20 KB TTF; caller must call `Font::load_from_file()` |
+| `FONT_MODE` | `embedded` | `embedded-latin` bakes in a Latin-1/Ext-A font; `system` drops the baked-in TTF, so set `ChartOptions::font` on every chart |
 
 ```bash
 # Minimal OpenWrt build — pie only, PNG only, font loaded from /www/assets/ at runtime
@@ -89,7 +89,7 @@ Chart (abstract)
 - **`ChartExporter`** (`include/insightdock/export.h`, `src/export.cc`) — static-only export API. `format_from_path()` infers format from extension. PDF methods are guarded by `#ifdef INSIGHTDOCK_HAS_PODOFO`. `ExportOptions::svg_backend = SvgBackend::Vector` dispatches to `src/svg_pie.cc` for `PieChart` (native `<path>`/`<text>`, guarded by `INSIGHTDOCK_HAS_PIE`); other chart types raster-fall back, same `Raster`/`Vector` shape as `PdfBackend`.
 - **`CartesianChart`** (`include/insightdock/cartesian_chart.h`, `src/cartesian_chart.cc`) — handles background, title, axes, grid, and legend; calls `draw_series(PlotContext&)` for the concrete geometry.
 - **`Scale`** (`include/insightdock/scale.h`, `src/scale.cc`) — linear mapping between data values and pixel coordinates; used by `CartesianChart` for both axes.
-- **`Font`** (`include/insightdock/font.h`, `src/font.cc`) — embedded ASCII-subset TTF (~20 KB) compiled in via `include/insightdock/embedded_font.h`; `Font::load_from_file()` loads a TTF but charts don't yet accept an injected font, and text is rendered ASCII-only (no UTF-8 decoding) — both planned before 1.0.
+- **`Font`** (`include/insightdock/font.h`, `src/font.cc`) — embedded ASCII-subset TTF (~20 KB) compiled in via `include/insightdock/embedded_font.h`; text is decoded as UTF-8 (missing glyphs draw as `?`); inject a full TTF with `ChartOptions::font = load_font_data(path)`; `INSIGHTDOCK_FONT_LATIN` / `FONT_MODE=embedded-latin` swaps in `embedded_font_latin.h`.
 - **`Palette`** (`include/insightdock/palette.h`, `src/palette.cc`) — `PaletteKind::ChartJs12` (bar/line default) and `PaletteKind::Tableau10` (pie default).
 
 ### PDF layer (optional)

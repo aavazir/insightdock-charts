@@ -127,6 +127,15 @@ struct CartesianOptions {
    */
   int max_x_labels = 0;
 
+  /** @brief How x-axis category labels are fitted when they are wider than their slot. */
+  enum class XLabelMode {
+    Auto,     ///< Draw horizontally; skip labels so neighbours don't overlap (default).
+    Rotate90, ///< Draw every label rotated 90° (reads bottom-to-top); the bottom margin grows.
+    Truncate, ///< Draw every label horizontally, shortened with "..." to fit its slot.
+  };
+  /** Layout strategy for category labels on the x-axis (vertical orientation only). */
+  XLabelMode x_label_mode = XLabelMode::Auto;
+
   /**
    * @brief Minimum number of y-axis tick labels to render.
    *
@@ -345,6 +354,10 @@ protected:
   }
   /** @brief Compute plot rectangle inside the image buffer. */
   Rect compute_plot_rect(ImageBuffer const &buf, Font const &font) const;
+  /** @brief True when x-axis labels are drawn rotated 90° (grows the bottom margin). */
+  bool x_labels_rotated() const;
+  /** @brief Height of the x-axis label row (one line, or the longest label when rotated). */
+  float x_label_row_height(Font const &font) const;
 
   void draw_background(ImageBuffer &buf) const;
   void draw_title(ImageBuffer &buf, Font &font) const;

@@ -16,7 +16,7 @@ Three variables let you trim the library for size-constrained targets:
 |---|---|---|---|
 | `CHART_TYPES` | `pie bar line area scatter` | any subset (`bar`+`line` also builds combo) | Omitted types are not compiled |
 | `EXPORT_FORMATS` | `png jpeg` | `png` or `png jpeg` | Omitting `jpeg` drops ~15 KB |
-| `FONT_MODE` | `embedded` | `embedded` \| `system` | `system` drops the baked-in 20 KB TTF |
+| `FONT_MODE` | `embedded` | `embedded` \| `embedded-latin` \| `system` | `embedded-latin` adds Latin-1/Latin-Ext glyphs (~22 KB); `system` drops the baked-in font |
 
 **Minimal OpenWrt build** (pie only, PNG only, system font from `/www/assets/`):
 
@@ -26,10 +26,12 @@ make CXX=mips-openwrt-linux-musl-g++ AR=mips-openwrt-linux-musl-gcc-ar \
      CXXFLAGS="-std=c++17 -Os -ffunction-sections -fdata-sections -Wall"
 ```
 
-When `FONT_MODE=system`, no font is baked in, so text will not render until a TTF is supplied.
-`Font::load_from_file()` exists, but charts do not yet accept an injected `Font` — a font option on
-`ChartOptions` is tracked on the [roadmap](ROADMAP.md) and lands before 1.0. Use `FONT_MODE=embedded`
-(the default) until then.
+When `FONT_MODE=system`, no font is baked in, so supply one on every chart:
+
+```cpp
+static auto font = insightdock::charts::load_font_data("/www/assets/fonts/OpenSans-Regular.ttf");
+chart.options().font = font;   // shared_ptr — reuse it across charts
+```
 
 | Configuration | Code section (unstripped) |
 |---|---|

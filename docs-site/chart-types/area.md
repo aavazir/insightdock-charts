@@ -31,7 +31,8 @@ Accessed via `area.area_options()`:
 | `show_line` | `true` | Draw a stroke on top of each filled area. |
 | `line_width` | `2.0` | Stroke width in pixels, when `show_line` is true. |
 | `spline` | `false` | Catmull-Rom cubic interpolation for both the fill and the stroke edge. |
-| `dash` | empty (solid) | Alternating on/off stroke lengths in pixels for the top edge. Chart-wide, not per-series. |
+| `dash` | empty (solid) | Alternating on/off stroke lengths in pixels for the top edge. Chart-wide default; override per series with `SeriesStyle` (see [Line → Per-series style](line.md#per-series-style)). |
+| `gap_policy` | `GapPolicy::Gap` | How NaN/Inf/missing values are drawn in non-stacked areas. In stacked mode a missing value counts as 0. |
 | `show_points` | `false` | Point markers along the top edge — off by default, unlike `LineChart`. |
 | `point_radius` | `4.0` | Marker radius when `show_points` is true. |
 | `point_shape` | `PointMarkerShape::Circle` | `Circle`, `Square`, `Triangle`, or `Cross`. |

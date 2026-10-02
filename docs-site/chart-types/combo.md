@@ -50,7 +50,8 @@ Applies to every line series in the chart (accessed via `combo.line_options()`):
 | `line_width` | `2.0` | Stroke width in pixels. |
 | `point_radius` | `3.0` | Point marker radius in pixels. |
 | `spline` | `false` | Catmull-Rom cubic interpolation for the line series. |
-| `dash` | empty (solid) | Alternating on/off stroke lengths in pixels, e.g. `{6, 4}`. |
+| `dash` | empty (solid) | Alternating on/off stroke lengths in pixels, e.g. `{6, 4}`. Override per series via the `add_line_series(label, values, color, SeriesStyle, secondary_axis)` overload. |
+| `gap_policy` | `GapPolicy::Gap` | How NaN/Inf/missing values are drawn in line series. |
 | `point_shape` | `PointMarkerShape::Circle` | `Circle`, `Square`, `Triangle`, or `Cross`. |
 | `data_labels` | disabled | `DataLabelOptions` for the line series' points. |
 

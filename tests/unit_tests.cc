@@ -2149,7 +2149,44 @@ static void test_decimate_keeps_gap_markers() {
   CHECK(vals.size() == 40);
 }
 
+static void test_x_label_modes() {
+  std::vector<std::string> cats;
+  for (int i = 0; i < 12; ++i)
+    cats.push_back("Category number " + std::to_string(i));
+  auto make = [&](CartesianOptions::XLabelMode m) {
+    BarChart c;
+    c.set_categories(cats);
+    c.add_series("s", {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12});
+    c.cartesian_options().x_label_mode = m;
+    return c;
+  };
+  BarChart autoc = make(CartesianOptions::XLabelMode::Auto);
+  BarChart rot = make(CartesianOptions::XLabelMode::Rotate90);
+  BarChart trunc = make(CartesianOptions::XLabelMode::Truncate);
+  ImageBuffer ia = autoc.render(), ir = rot.render(), it = trunc.render();
+  CHECK(ir.width() == ia.width() && it.height() == ia.height());
+  // Count grey (text/axis) ink: rotated draws every label, while Auto skips colliding ones.
+  auto band_ink = [](ImageBuffer const &img) {
+    std::size_t n = 0;
+    for (std::size_t y = 0; y < img.height(); ++y)
+      for (std::size_t x = 0; x < img.width(); ++x) {
+        auto const *p = img.pixel(x, y);
+        if (p[0] < 140 && std::abs(p[0] - p[2]) < 10)
+          ++n;
+      }
+    return n;
+  };
+  CHECK(band_ink(ir) > band_ink(ia));
+  CHECK(band_ink(it) > 0);
+  // Rotated labels shrink the plot (bigger bottom margin) vs Auto.
+  Font f;
+  f.set_size(rot.options().font_size);
+  CHECK(f.measure_width(cats[0]) > f.line_height());
+  CHECK(rot.render().width() == rot.options().width);
+}
+
 int main() {
+  test_x_label_modes();
   test_per_series_dash_overrides_chart_default();
   test_per_series_marker_and_width_and_fill();
   test_combo_line_series_style_overload();

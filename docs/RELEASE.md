@@ -2,7 +2,10 @@
 
 ## Versioning
 
-Semantic versioning after 1.0.0.
+Semantic versioning after 1.0.0, promising **source compatibility** only: public option structs may
+gain fields in minor releases, so binary (ABI) compatibility is not guaranteed. `SOVERSION` is
+`major.minor` while the major is 0 and `major` from 1.0; `find_package` uses `SameMinorVersion`
+before 1.0. See `docs-site/guides/thread-safety-and-abi.md`.
 
 ## Release checklist
 

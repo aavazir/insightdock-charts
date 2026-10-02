@@ -31,8 +31,9 @@ Accessed via `line.line_options()` (mutable reference, so set fields directly):
 | `line_width` | `2.0` | Stroke width in pixels. |
 | `point_radius` | `4.0` | Point marker radius in pixels. |
 | `spline` | `false` | Catmull-Rom cubic interpolation between points instead of straight segments. |
-| `dash` | empty (solid) | Alternating on/off stroke lengths in pixels, e.g. `{6, 4}`. Chart-wide, not per-series. |
-| `point_shape` | `PointMarkerShape::Circle` | `Circle`, `Square`, `Triangle`, or `Cross`. Chart-wide, not per-series. |
+| `dash` | empty (solid) | Alternating on/off stroke lengths in pixels, e.g. `{6, 4}`. Chart-wide default; override per series with `SeriesStyle`. |
+| `point_shape` | `PointMarkerShape::Circle` | `Circle`, `Square`, `Triangle`, or `Cross`. Chart-wide default; override per series. |
+| `gap_policy` | `GapPolicy::Gap` | How NaN/Inf/missing values are drawn: `Gap` breaks the line, `Interpolate` joins the neighbours, `Zero` plots 0. |
 | `data_labels` | disabled | `DataLabelOptions` — draws each point's formatted value above it. |
 
 `fill_area` only fills under the *first* added series — if you need every series filled and
@@ -44,9 +45,28 @@ line.line_options().dash = {8.0f, 4.0f};
 line.line_options().point_shape = PointMarkerShape::Triangle;
 ```
 
-`spline`/`dash`/`point_shape` apply to every series in the chart uniformly — there's no per-series
-override (e.g. a dashed "forecast" line next to a solid "actual" one in the same chart isn't
-possible without two separate charts overlaid).
+## Per-series style
+
+`dash`, `point_shape`, `line_width` and fill opacity are chart-wide defaults. Override any of them
+for one series with a `SeriesStyle` — unset fields keep inheriting the chart-wide value:
+
+```cpp
+SeriesStyle forecast;
+forecast.dash = DashPattern{6.0f, 4.0f};
+forecast.marker = PointMarkerShape::Square;
+line.add_series("Forecast", {14, 16, 19}, Color::rgb(220, 90, 40), forecast);
+line.add_series("Actual", {10, 12, 15});   // unchanged: solid, circle markers
+```
+
+A series with a dash or marker override gets a matching line sample in the legend instead of a
+filled square. `spline` and `gap_policy` stay chart-wide.
+
+## Missing data
+
+A `NaN`, `±Inf`, or a series shorter than the category list is "missing". By default
+(`GapPolicy::Gap`) the line breaks there; markers and data labels skip the missing point. Use
+`GapPolicy::Interpolate` to connect across it or `GapPolicy::Zero` for the pre-1.0 behaviour.
+Non-finite values never affect the axis range.
 
 ## Reference lines and bands
 

@@ -32,6 +32,25 @@ static int y_tick_hint(CartesianOptions const &opts) {
   return 6; // historical default
 }
 
+// Shortens `text` (on UTF-8 boundaries) so that `text + "..."` fits in `max_w` pixels.
+std::string truncate_to_width(Font const &font, std::string const &text, float max_w) {
+  if (font.measure_width(text) <= max_w)
+    return text;
+  std::string ellipsis = "...";
+  if (font.measure_width(ellipsis) > max_w)
+    return {};
+  std::string cut = text;
+  while (!cut.empty()) {
+    // Drop one whole UTF-8 code point from the end.
+    do {
+      cut.pop_back();
+    } while (!cut.empty() && (static_cast<unsigned char>(cut.back()) & 0xC0) == 0x80);
+    if (font.measure_width(cut + ellipsis) <= max_w)
+      return cut + ellipsis;
+  }
+  return ellipsis;
+}
+
 } // namespace
 
 void CartesianChart::set_categories(std::vector<std::string> categories) {
@@ -90,6 +109,20 @@ double CartesianChart::compute_y_max() const {
   return r.max_from_zero();
 }
 
+bool CartesianChart::x_labels_rotated() const {
+  return cartesian_.x_label_mode == CartesianOptions::XLabelMode::Rotate90 && !is_horizontal() &&
+         !categories_.empty();
+}
+
+float CartesianChart::x_label_row_height(Font const &font) const {
+  float row = font.line_height();
+  if (x_labels_rotated()) {
+    for (auto const &cat : categories_)
+      row = std::max(row, font.measure_width(cat) + 2.0f);
+  }
+  return row;
+}
+
 Rect CartesianChart::compute_plot_rect(ImageBuffer const &buf, Font const &font) const {
   float w = static_cast<float>(buf.width());
   float h = static_cast<float>(buf.height());
@@ -98,12 +131,18 @@ Rect CartesianChart::compute_plot_rect(ImageBuffer const &buf, Font const &font)
   if (!options_.title.empty()) {
     m.top = std::max(m.top, font.line_height() + 16.0f);
   }
+  // Height of the x-axis label row: one text line, or the longest label when rotated 90°.
+  bool rotated = x_labels_rotated();
+  float label_row = x_label_row_height(font);
   if (options_.legend.enabled && options_.legend.position == LegendOptions::Position::Bottom) {
     float lh = font.line_height();
     float legend_row = lh + 10.0f;
     float x_title_h = cartesian_.x_axis_label.empty() ? 0.0f : lh + 8.0f;
     // x-label gap + x-label row + gap + legend row + optional x-axis title
-    m.bottom = std::max(m.bottom, 8.0f + lh + 8.0f + legend_row + x_title_h);
+    m.bottom = std::max(m.bottom, 8.0f + label_row + 8.0f + legend_row + x_title_h);
+  } else if (rotated) {
+    float x_title_h = cartesian_.x_axis_label.empty() ? 0.0f : font.line_height() + 8.0f;
+    m.bottom = std::max(m.bottom, 8.0f + label_row + 8.0f + x_title_h);
   }
   if (options_.legend.enabled && options_.legend.position == LegendOptions::Position::Right) {
     m.right = std::max(m.right, 100.0f);
@@ -252,6 +291,17 @@ void CartesianChart::draw_axes_and_grid(PlotContext &ctx) const {
         ++step;
     }
 
+    auto mode = ctx.cart_opts.x_label_mode;
+    if (mode == CartesianOptions::XLabelMode::Rotate90) {
+      // Rotated labels only need one text line of horizontal room each.
+      step = 1;
+      while (static_cast<float>(step) * slot < font.line_height() + 2.0f &&
+             step < static_cast<int>(ctx.categories.size()))
+        ++step;
+    } else if (mode == CartesianOptions::XLabelMode::Truncate) {
+      step = 1;
+    }
+
     // Apply max_x_labels ceiling on top of the collision-avoidance step.
     if (ctx.cart_opts.max_x_labels > 0 &&
         static_cast<int>(ctx.categories.size()) > ctx.cart_opts.max_x_labels) {
@@ -262,8 +312,18 @@ void CartesianChart::draw_axes_and_grid(PlotContext &ctx) const {
 
     for (std::size_t i = 0; i < ctx.categories.size(); i += static_cast<std::size_t>(step)) {
       float cx = plot.left() + slot * (static_cast<float>(i) + 0.5f);
-      font.draw_text(buf, cx, plot.bottom() + 8.0f, ctx.categories[i], ctx.opts.text_color,
-                     TextAlign::Center, TextBaseline::Top);
+      if (mode == CartesianOptions::XLabelMode::Rotate90) {
+        // Text reads bottom-to-top, so its end sits against the axis.
+        float w = font.measure_width(ctx.categories[i]);
+        font.draw_text_rotated_ccw(buf, cx, plot.bottom() + 8.0f + w * 0.5f + 1.0f,
+                                   ctx.categories[i], ctx.opts.text_color);
+        continue;
+      }
+      std::string label = ctx.categories[i];
+      if (mode == CartesianOptions::XLabelMode::Truncate)
+        label = truncate_to_width(font, label, slot * static_cast<float>(step) - 4.0f);
+      font.draw_text(buf, cx, plot.bottom() + 8.0f, label, ctx.opts.text_color, TextAlign::Center,
+                     TextBaseline::Top);
     }
   }
 
@@ -328,7 +388,7 @@ void CartesianChart::draw_legend(ImageBuffer &buf, Font &font, Rect plot) const 
       item_w * static_cast<float>(series_.size()) + gap * static_cast<float>(series_.size() - 1);
   float x = (static_cast<float>(buf.width()) - total_w) * 0.5f;
   // Position legend below x-axis category labels: gap + label row + gap
-  float y = plot.bottom() + 8.0f + font.line_height() + 8.0f;
+  float y = plot.bottom() + 8.0f + x_label_row_height(font) + 8.0f;
 
   if (options_.legend.position == LegendOptions::Position::Right) {
     x = plot.right() + 12.0f;

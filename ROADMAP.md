@@ -197,7 +197,10 @@ Requested to close the gap between InsightDock's plain default styling and what 
 - [x] Point marker shapes — `PointMarkerShape` (Circle/Square/Triangle/Cross) on Line/Area/Combo/Scatter, chart-wide not per-series
 - [x] Dash patterns — `DashPattern` on Line/Area/Combo lines and on `ReferenceLine`, chart-wide not per-series
 - [x] New `ImageBuffer` primitives backing the above: `fill_rounded_rect()`, `draw_dashed_line()`/`draw_dashed_polyline()`
-- [ ] Per-series (rather than chart-wide) dash pattern / marker shape — would need new fields on the shared `DataSeries` struct; deferred, see `CHANGELOG.md`
+- [x] Per-series dash pattern / marker shape / line width / fill opacity — `DataSeries::style` (`SeriesStyle`, `include/insightdock/series_style.h`); unset fields inherit the chart-wide options; legend swatches reflect the override
+- [x] `GapPolicy` (`Gap`/`Interpolate`/`Zero`) for NaN, Inf and short series on Line/Area/Combo
+- [x] Font injection (`ChartOptions::font` + `load_font_data()`), UTF-8 decoding, optional Latin-1/Latin-Ext embedded font, non-mutating supersampled export, `SOVERSION`/`INSIGHTDOCK_API`, `x_label_mode` (rotate 90° / truncate)
+- [ ] 45° x-label rotation — deferred to the DrawTarget work (needs arbitrary-angle text)
 - [ ] Native vector PDF/SVG support for the new bar/line polish (rounding, dash, spline, markers, labels) — only pie has vector export today; tracked as a Phase 0.7 launch-gate item below ("Native vector PDF for bar and line charts" / "Native SVG paths for bar and line")
 
 ### Axis and orientation completeness ✓

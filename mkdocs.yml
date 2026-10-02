@@ -50,6 +50,8 @@ nav:
   - Guides:
       - Usage guide: guides/usage.md
       - PDF reports: guides/pdf-reports.md
+      - Fonts and text: guides/fonts-and-text.md
+      - Thread safety and ABI: guides/thread-safety-and-abi.md
       - Troubleshooting: guides/troubleshooting.md
   - Chart types:
       - Pie: chart-types/pie.md
