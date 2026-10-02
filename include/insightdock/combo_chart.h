@@ -32,6 +32,8 @@ struct ComboLineOptions {
   /** Alternating on/off stroke lengths in pixels; empty (default) = solid. */
   DashPattern dash;
   PointMarkerShape point_shape = PointMarkerShape::Circle;
+  /** How NaN/Inf/missing values are drawn (default: break the line). */
+  GapPolicy gap_policy = GapPolicy::Gap;
   DataLabelOptions data_labels;
 };
 
@@ -100,6 +102,10 @@ public:
   /** @brief Add a series drawn as a line overlay with explicit color. */
   void add_line_series(std::string label, std::vector<double> values, Color color,
                        bool secondary_axis = false);
+
+  /** @brief Add a line overlay series with explicit color and per-series style overrides. */
+  void add_line_series(std::string label, std::vector<double> values, Color color,
+                       SeriesStyle style, bool secondary_axis = false);
 
   /** @brief Clear all series and kind tags. */
   void clear_series();

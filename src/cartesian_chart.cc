@@ -3,6 +3,7 @@
 
 #include "insightdock/cartesian_chart.h"
 #include "insightdock/detail/finite_range.h"
+#include "insightdock/detail/marker.h"
 #include "insightdock/detail/tick_format.h"
 #include "insightdock/palette.h"
 
@@ -52,6 +53,12 @@ void CartesianChart::add_series(std::string label, std::vector<double> values, C
   s.values = std::move(values);
   s.color = color;
   series_.push_back(std::move(s));
+}
+
+void CartesianChart::add_series(std::string label, std::vector<double> values, Color color,
+                                SeriesStyle style) {
+  add_series(std::move(label), std::move(values), color);
+  series_.back().style = std::move(style);
 }
 
 void CartesianChart::clear_series() {
@@ -285,6 +292,27 @@ void CartesianChart::draw_axes_and_grid(PlotContext &ctx) const {
   }
 }
 
+namespace {
+
+// Legend swatch: a filled square, or — for a series with per-series dash/marker overrides — a
+// short line sample showing that dash and marker so the legend identifies the series' style.
+void draw_legend_swatch(ImageBuffer &buf, DataSeries const &s, float x, float y, float box) {
+  if (!s.style.dash && !s.style.marker) {
+    buf.fill_rect(x, y, box, box, s.color);
+    return;
+  }
+  float cy = y + box * 0.5f;
+  float width = s.style.line_width_or(2.0f);
+  if (s.style.dash && !s.style.dash->empty())
+    buf.draw_dashed_line(x, cy, x + box, cy, width, s.color, *s.style.dash);
+  else
+    buf.draw_line(x, cy, x + box, cy, width, s.color);
+  if (s.style.marker)
+    detail::draw_marker(buf, x + box * 0.5f, cy, 3.0f, *s.style.marker, s.color);
+}
+
+} // namespace
+
 void CartesianChart::draw_legend(ImageBuffer &buf, Font &font, Rect plot) const {
   if (!options_.legend.enabled || series_.empty())
     return;
@@ -307,7 +335,7 @@ void CartesianChart::draw_legend(ImageBuffer &buf, Font &font, Rect plot) const 
     y = plot.top();
     for (std::size_t i = 0; i < series_.size(); ++i) {
       auto const &s = series_[i];
-      buf.fill_rect(x, y, box, box, s.color);
+      draw_legend_swatch(buf, s, x, y, box);
       font.draw_text(buf, x + box + 6.0f, y + box * 0.5f, s.label, options_.text_color,
                      TextAlign::Left, TextBaseline::Middle);
       y += box + 8.0f;
@@ -316,7 +344,7 @@ void CartesianChart::draw_legend(ImageBuffer &buf, Font &font, Rect plot) const 
   }
 
   for (auto const &s : series_) {
-    buf.fill_rect(x, y, box, box, s.color);
+    draw_legend_swatch(buf, s, x, y, box);
     font.draw_text(buf, x + box + 6.0f, y + box * 0.5f, s.label, options_.text_color,
                    TextAlign::Left, TextBaseline::Middle);
     x += item_w + gap;

@@ -4,6 +4,7 @@
 #include "insightdock/decimate.h"
 
 #include <cmath>
+#include <limits>
 
 namespace insightdock::charts {
 
@@ -29,10 +30,16 @@ std::vector<DecimationPoint> lttb_decimate(std::vector<DecimationPoint> const &p
     double avg_x = 0.0;
     double avg_y = 0.0;
     std::size_t avg_len = avg_end > avg_start ? avg_end - avg_start : 0;
+    // Non-finite samples don't contribute to the next bucket's average (they would poison it).
+    std::size_t finite_len = 0;
     for (std::size_t j = avg_start; j < avg_end; ++j) {
+      if (!std::isfinite(points[j].x) || !std::isfinite(points[j].y))
+        continue;
       avg_x += points[j].x;
       avg_y += points[j].y;
+      ++finite_len;
     }
+    avg_len = finite_len;
     if (avg_len > 0) {
       avg_x /= static_cast<double>(avg_len);
       avg_y /= static_cast<double>(avg_len);
@@ -46,10 +53,21 @@ std::vector<DecimationPoint> lttb_decimate(std::vector<DecimationPoint> const &p
 
     double point_a_x = points[a].x;
     double point_a_y = points[a].y;
+    if (!std::isfinite(point_a_x) || !std::isfinite(point_a_y)) {
+      // Previous anchor was a gap: measure areas from the bucket's own first point instead.
+      point_a_x = avg_x;
+      point_a_y = avg_y;
+    }
 
     double max_area = -1.0;
     std::size_t next_a = bucket_start;
     for (std::size_t j = bucket_start; j < bucket_end; ++j) {
+      // Always keep a non-finite point: it marks a gap the chart must still be able to show.
+      if (!std::isfinite(points[j].x) || !std::isfinite(points[j].y)) {
+        next_a = j;
+        max_area = std::numeric_limits<double>::infinity();
+        break;
+      }
       double area = std::fabs((point_a_x - avg_x) * (points[j].y - point_a_y) -
                               (point_a_x - points[j].x) * (avg_y - point_a_y)) *
                     0.5;

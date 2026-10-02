@@ -27,6 +27,8 @@ struct LineChartOptions {
   DashPattern dash;
   /** Marker shape drawn at each point when show_points is true. */
   PointMarkerShape point_shape = PointMarkerShape::Circle;
+  /** How NaN/Inf/missing values are drawn (default: break the line). */
+  GapPolicy gap_policy = GapPolicy::Gap;
   DataLabelOptions data_labels;
 };
 

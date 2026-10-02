@@ -12,13 +12,11 @@
 
 #include "insightdock/cartesian_chart.h"
 #include "insightdock/color.h"
+#include "insightdock/series_style.h" // PointMarkerShape, DashPattern, GapPolicy
 
 #include <vector>
 
 namespace insightdock::charts {
-
-/** @brief Shape drawn at each data point marker (line/scatter/combo charts). */
-enum class PointMarkerShape { Circle, Square, Triangle, Cross };
 
 /** @brief Where a data label is anchored relative to its mark. */
 enum class DataLabelPosition { Auto, Above, Below, Center, Inside, Outside };
@@ -34,9 +32,6 @@ struct DataLabelOptions {
   /** Reuses the same TickFormat semantics as CartesianChart's y-axis; ignored by PieChart. */
   TickFormat format = TickFormat::Raw;
 };
-
-/** @brief Alternating on/off stroke lengths in pixels (e.g. {6,4}); empty means solid. */
-using DashPattern = std::vector<float>;
 
 } // namespace insightdock::charts
 

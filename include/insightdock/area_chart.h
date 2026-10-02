@@ -28,6 +28,8 @@ struct AreaChartOptions {
   bool show_points = false;
   float point_radius = 4.0f;
   PointMarkerShape point_shape = PointMarkerShape::Circle;
+  /** How NaN/Inf/missing values are drawn (default: break the line). */
+  GapPolicy gap_policy = GapPolicy::Gap;
   DataLabelOptions data_labels;
 };
 

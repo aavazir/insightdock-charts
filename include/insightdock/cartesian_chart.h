@@ -261,6 +261,12 @@ public:
    */
   void add_series(std::string label, std::vector<double> values, Color color);
 
+  /**
+   * @brief Add a data series with explicit color and per-series style overrides.
+   * @param style Dash/marker/width/fill overrides; unset fields inherit the chart-wide options.
+   */
+  void add_series(std::string label, std::vector<double> values, Color color, SeriesStyle style);
+
   /** @brief All data series. */
   std::vector<DataSeries> const &series() const {
     return series_;

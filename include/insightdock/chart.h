@@ -13,6 +13,7 @@
 #include "insightdock/export_macros.h"
 #include "insightdock/font.h"
 #include "insightdock/image_buffer.h"
+#include "insightdock/series_style.h"
 #include "insightdock/theme.h"
 #include <cstddef>
 #include <memory>
@@ -72,6 +73,8 @@ struct DataSeries {
   std::vector<double> values; ///< One value per category.
   Color color;                ///< Series color (ignored if auto_color).
   bool auto_color = false;    ///< Pick color from default palette.
+  /** Optional per-series dash/marker/width/fill overrides (line, area and combo-line series). */
+  SeriesStyle style;
 };
 
 /**

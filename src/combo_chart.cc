@@ -6,6 +6,7 @@
 #include "insightdock/detail/finite_range.h"
 #include "insightdock/detail/marker.h"
 #include "insightdock/detail/reference_lines.h"
+#include "insightdock/detail/series_runs.h"
 #include "insightdock/detail/spline.h"
 #include "insightdock/detail/tick_format.h"
 #include "insightdock/font.h"
@@ -77,6 +78,12 @@ void ComboChart::add_line_series(std::string label, std::vector<double> values, 
   add_series(std::move(label), std::move(values), color);
   kinds_.push_back(ComboSeriesKind::Line);
   use_y2_.push_back(secondary_axis);
+}
+
+void ComboChart::add_line_series(std::string label, std::vector<double> values, Color color,
+                                 SeriesStyle style, bool secondary_axis) {
+  add_line_series(std::move(label), std::move(values), color, secondary_axis);
+  series_.back().style = std::move(style);
 }
 
 void ComboChart::clear_series() {
@@ -180,37 +187,42 @@ void ComboChart::draw_overlay(PlotContext &ctx) const {
     auto const &ser = ctx.series[si];
     Scale const &scale = axis_scale(ctx, si);
 
-    std::vector<std::pair<float, float>> pts;
-    pts.reserve(ncat);
-    for (std::size_t i = 0; i < ncat; ++i) {
-      double val = (i < ser.values.size()) ? ser.values[i] : 0.0;
-      float px = ctx.plot.left() + slot * (static_cast<float>(i) + 0.5f);
-      float py = scale.to_pixel(val);
-      pts.push_back({px, py});
+    auto const &dash = ser.style.dash_or(line_opts_.dash);
+    float line_width = ser.style.line_width_or(line_opts_.line_width);
+    PointMarkerShape shape = ser.style.marker_or(line_opts_.point_shape);
+
+    auto runs = detail::make_runs(
+        ncat, line_opts_.gap_policy,
+        [&](std::size_t i) { return detail::value_or_nan(ser.values, i); },
+        [&](std::size_t i) { return ctx.plot.left() + slot * (static_cast<float>(i) + 0.5f); },
+        [&](double v) { return scale.to_pixel(v); });
+
+    for (auto const &run : runs) {
+      std::vector<std::pair<float, float>> curve =
+          line_opts_.spline ? detail::catmull_rom_expand(run.pts) : run.pts;
+      if (curve.size() >= 2) {
+        ctx.buffer.draw_dashed_polyline(curve.data(), curve.size(), line_width, ser.color, dash);
+      }
     }
 
-    std::vector<std::pair<float, float>> curve =
-        line_opts_.spline ? detail::catmull_rom_expand(pts) : pts;
+    for (auto const &run : runs) {
+      if (line_opts_.show_points) {
+        for (auto const &p : run.pts)
+          detail::draw_marker(ctx.buffer, p.first, p.second, line_opts_.point_radius, shape,
+                              ser.color);
+      }
 
-    if (curve.size() >= 2) {
-      ctx.buffer.draw_dashed_polyline(curve.data(), curve.size(), line_opts_.line_width, ser.color,
-                                      line_opts_.dash);
-    }
-
-    if (line_opts_.show_points) {
-      for (auto const &p : pts)
-        detail::draw_marker(ctx.buffer, p.first, p.second, line_opts_.point_radius,
-                            line_opts_.point_shape, ser.color);
-    }
-
-    if (line_opts_.data_labels.enabled) {
-      auto const &dl = line_opts_.data_labels;
-      for (std::size_t i = 0; i < pts.size(); ++i) {
-        double val = (i < ser.values.size()) ? ser.values[i] : 0.0;
-        std::string text = detail::format_label_value(val, dl.format, dl.decimals);
-        line_label_font.draw_text(ctx.buffer, pts[i].first,
-                                  pts[i].second - line_opts_.point_radius - 4.0f, text, dl.color,
-                                  TextAlign::Center, TextBaseline::Bottom);
+      if (line_opts_.data_labels.enabled) {
+        auto const &dl = line_opts_.data_labels;
+        for (std::size_t k = 0; k < run.pts.size(); ++k) {
+          double val = detail::value_or_nan(ser.values, run.idx[k]);
+          if (!std::isfinite(val))
+            val = 0.0;
+          std::string text = detail::format_label_value(val, dl.format, dl.decimals);
+          line_label_font.draw_text(ctx.buffer, run.pts[k].first,
+                                    run.pts[k].second - line_opts_.point_radius - 4.0f, text,
+                                    dl.color, TextAlign::Center, TextBaseline::Bottom);
+        }
       }
     }
   }

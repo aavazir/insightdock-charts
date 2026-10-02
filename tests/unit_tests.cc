@@ -12,8 +12,8 @@
 #include "insightdock/error.h"
 #include "insightdock/svg_writer.h"
 
-#include <cassert>
 #include <atomic>
+#include <cassert>
 #include <cmath>
 #include <cstdio>
 #include <cstring>
@@ -1856,13 +1856,13 @@ static void test_fuzz_hostile_data_all_chart_types() {
   }
 }
 
-
 // ── Fonts: UTF-8 decoding, fallback glyph, injection ─────────────────────────────────────────
 
 static void test_font_utf8_missing_glyph_falls_back_to_question_mark() {
   Font f; // neither embedded subset has CJK
   f.set_size(14.0f);
-  CHECKF(f.measure_width("\xE4\xB8\xAD"), f.measure_width("?"), 1e-4); // one code point, not 2 bytes
+  CHECKF(f.measure_width("\xE4\xB8\xAD"), f.measure_width("?"),
+         1e-4); // one code point, not 2 bytes
   CHECKF(f.measure_width("a\xE4\xB8\xAD"), f.measure_width("a?"), 1e-4);
   // Malformed sequences must not hang or read past the end.
   CHECK(f.measure_width("\xC3") > 0.0f);
@@ -1929,7 +1929,6 @@ static void test_latin_embedded_font_has_accents() {
 }
 #endif
 
-
 static void test_supersampled_export_does_not_mutate_chart_and_is_thread_safe() {
   LineChart line;
   line.set_categories({"a", "b", "c"});
@@ -1963,7 +1962,6 @@ static void test_supersampled_export_does_not_mutate_chart_and_is_thread_safe() 
   CHECK(cline.options().width == w);
 }
 
-
 static void test_pdf_backend_does_not_hijack_png_export() {
   BarChart bar;
   bar.set_categories({"a"});
@@ -1974,11 +1972,191 @@ static void test_pdf_backend_does_not_hijack_png_export() {
   CHECK(static_cast<bool>(res));
   if (res) {
     CHECK(res.value.size() > 4);
-    CHECK(res.value[0] == 0x89 && res.value[1] == 'P' && res.value[2] == 'N' && res.value[3] == 'G');
+    CHECK(res.value[0] == 0x89 && res.value[1] == 'P' && res.value[2] == 'N' &&
+          res.value[3] == 'G');
   }
 }
 
+// ── Per-series style and gap policy ──────────────────────────────────────────────────────────
+
+// Total "ink" of c's hue in the image: anti-aliased edge pixels count fractionally, grey text,
+// axes and grid count zero. Used to compare how much of a series was drawn.
+static std::size_t count_color_pixels(ImageBuffer const &img, Color c) {
+  int dom = (c.r >= c.g && c.r >= c.b) ? 0 : (c.g >= c.b ? 1 : 2);
+  double ink = 0.0;
+  for (std::size_t y = 0; y < img.height(); ++y)
+    for (std::size_t x = 0; x < img.width(); ++x) {
+      auto const *p = img.pixel(x, y);
+      double others = (p[0] + p[1] + p[2] - p[dom]) / 2.0;
+      double d = p[dom] - others;
+      if (d > 0.0)
+        ink += d / 255.0;
+    }
+  return static_cast<std::size_t>(ink * 100.0);
+}
+
+static void test_per_series_dash_overrides_chart_default() {
+  Color red = Color::rgb(220, 20, 20), blue = Color::rgb(20, 20, 220);
+  auto make = [&](bool dashed) {
+    LineChart c;
+    c.options().legend.enabled = false;
+    c.line_options().show_points = false;
+    c.set_categories({"a", "b", "c", "d"});
+    SeriesStyle st;
+    if (dashed)
+      st.dash = DashPattern{6.0f, 6.0f};
+    c.add_series("s", {1, 3, 2, 4}, red, st);
+    c.add_series("t", {5, 5, 5, 5}, blue); // never crosses the red series
+    return c;
+  };
+  LineChart solid = make(false), dashed = make(true);
+  ImageBuffer a = solid.render(), b = dashed.render();
+  // The dashed series draws fewer pixels; the untouched (inheriting) series is identical.
+  CHECK(count_color_pixels(b, red) < count_color_pixels(a, red));
+  CHECK(count_color_pixels(b, blue) == count_color_pixels(a, blue));
+}
+
+static void test_per_series_marker_and_width_and_fill() {
+  Color red = Color::rgb(220, 20, 20);
+  LineChart base, styled;
+  for (LineChart *c : {&base, &styled}) {
+    c->options().legend.enabled = false;
+    c->line_options().show_points = true;
+    c->set_categories({"a", "b", "c"});
+  }
+  base.add_series("s", {1, 3, 2}, red);
+  SeriesStyle st;
+  st.marker = PointMarkerShape::Square;
+  st.line_width = 6.0f;
+  styled.add_series("s", {1, 3, 2}, red, st);
+  CHECK(count_color_pixels(styled.render(), red) > count_color_pixels(base.render(), red));
+
+  AreaChart lo, hi;
+  for (AreaChart *c : {&lo, &hi}) {
+    c->options().legend.enabled = false;
+    c->set_categories({"a", "b", "c"});
+  }
+  SeriesStyle faint, strong;
+  faint.fill_opacity = 0.05f;
+  strong.fill_opacity = 1.0f;
+  lo.add_series("s", {5, 8, 6}, red, faint);
+  hi.add_series("s", {5, 8, 6}, red, strong);
+  CHECK(count_color_pixels(hi.render(), red) > count_color_pixels(lo.render(), red) + 500);
+  CHECK(SeriesStyle{}.fill_alpha_or(120) == 120);
+  SeriesStyle neg;
+  neg.fill_opacity = -3.0f;
+  CHECK(neg.fill_alpha_or(120) == 0);
+}
+
+static void test_combo_line_series_style_overload() {
+  ComboChart c;
+  c.set_categories({"a", "b"});
+  c.add_bar_series("bars", {1, 2});
+  SeriesStyle st;
+  st.dash = DashPattern{4.0f, 4.0f};
+  c.add_line_series("l", {2, 1}, Color::rgb(1, 2, 3), st, /*secondary_axis=*/true);
+  CHECK(c.series().back().style.dash.has_value());
+  CHECK(c.render().width() == c.options().width);
+}
+
+static void test_legend_swatch_differs_for_styled_series() {
+  Color red = Color::rgb(220, 20, 20);
+  LineChart plain, styled;
+  for (LineChart *c : {&plain, &styled}) {
+    c->set_categories({"a", "b"});
+  }
+  plain.add_series("s", {1, 2}, red);
+  SeriesStyle st;
+  st.marker = PointMarkerShape::Triangle;
+  styled.add_series("s", {1, 2}, red, st);
+  ImageBuffer a = plain.render(), b = styled.render();
+  bool differ = false;
+  for (std::size_t y = 0; y < a.height() && !differ; ++y)
+    for (std::size_t x = 0; x < a.width(); ++x)
+      if (std::memcmp(a.pixel(x, y), b.pixel(x, y), 4) != 0) {
+        differ = true;
+        break;
+      }
+  CHECK(differ);
+}
+
+static void test_gap_policy_breaks_line_at_nan() {
+  Color red = Color::rgb(220, 20, 20);
+  double const nan = std::nan("");
+  auto render_with = [&](GapPolicy gp) {
+    LineChart c;
+    c.options().legend.enabled = false;
+    c.line_options().show_points = false;
+    c.line_options().gap_policy = gp;
+    c.set_categories({"a", "b", "c", "d", "e"});
+    c.add_series("s", {2, 4, nan, 4, 2}, red);
+    return count_color_pixels(c.render(), red);
+  };
+  std::size_t gap = render_with(GapPolicy::Gap);
+  std::size_t interp = render_with(GapPolicy::Interpolate);
+  std::size_t zero = render_with(GapPolicy::Zero);
+  CHECK(gap > 0);
+  CHECK(interp > gap); // the bridge segment adds ink
+  CHECK(zero != gap && zero != interp);
+
+  // A series shorter than the category list ends where its data ends (Gap) instead of
+  // dropping to zero.
+  LineChart shorter;
+  shorter.options().legend.enabled = false;
+  shorter.line_options().show_points = false;
+  shorter.set_categories({"a", "b", "c", "d"});
+  shorter.add_series("s", {1, 2}, red);
+  LineChart padded = shorter;
+  padded.clear_series();
+  padded.add_series("s", {1, 2, nan, nan}, red);
+  ImageBuffer s1 = shorter.render(), s2 = padded.render();
+  CHECK(count_color_pixels(s1, red) == count_color_pixels(s2, red));
+}
+
+static void test_stacked_area_nan_counts_as_zero() {
+  double const nan = std::nan("");
+  AreaChart a, b;
+  for (AreaChart *c : {&a, &b}) {
+    c->area_options().stacked = true;
+    c->set_categories({"x", "y", "z"});
+  }
+  a.add_series("1", {1, nan, 3});
+  a.add_series("2", {2, 2, 2});
+  b.add_series("1", {1, 0, 3});
+  b.add_series("2", {2, 2, 2});
+  ImageBuffer ia = a.render(), ib = b.render();
+  bool same = true;
+  for (std::size_t y = 0; y < ia.height() && same; ++y)
+    for (std::size_t x = 0; x < ia.width(); ++x)
+      if (std::memcmp(ia.pixel(x, y), ib.pixel(x, y), 4) != 0) {
+        same = false;
+        break;
+      }
+  CHECK(same);
+}
+
+static void test_decimate_keeps_gap_markers() {
+  std::vector<double> v(200);
+  for (std::size_t i = 0; i < v.size(); ++i)
+    v[i] = std::sin(static_cast<double>(i) * 0.1);
+  v[97] = std::nan("");
+  auto [vals, idx] = lttb_decimate_indexed(v, 40);
+  bool has_nan = false;
+  for (double d : vals)
+    has_nan = has_nan || std::isnan(d);
+  CHECK(has_nan);
+  CHECK(vals.size() == idx.size());
+  CHECK(vals.size() == 40);
+}
+
 int main() {
+  test_per_series_dash_overrides_chart_default();
+  test_per_series_marker_and_width_and_fill();
+  test_combo_line_series_style_overload();
+  test_legend_swatch_differs_for_styled_series();
+  test_gap_policy_breaks_line_at_nan();
+  test_stacked_area_nan_counts_as_zero();
+  test_decimate_keeps_gap_markers();
   test_pdf_backend_does_not_hijack_png_export();
   test_supersampled_export_does_not_mutate_chart_and_is_thread_safe();
 #ifdef INSIGHTDOCK_FONT_LATIN

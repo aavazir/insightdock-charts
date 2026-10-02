@@ -17,9 +17,9 @@
 #endif
 
 #include <algorithm>
-#include <memory>
 #include <cctype>
 #include <fstream>
+#include <memory>
 #include <string>
 
 namespace insightdock::charts {
