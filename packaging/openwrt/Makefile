@@ -21,9 +21,9 @@ PKG_VERSION:=1.0.0
 PKG_RELEASE:=1
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
-PKG_SOURCE_URL:=https://github.com/avazir/insightdock/archive/refs/tags/v$(PKG_VERSION).tar.gz
+PKG_SOURCE_URL:=https://github.com/aavazir/insightdock-charts/archive/refs/tags/v$(PKG_VERSION).tar.gz
 PKG_HASH:=skip
-PKG_BUILD_DIR:=$(BUILD_DIR)/insightdock-$(PKG_VERSION)
+PKG_BUILD_DIR:=$(BUILD_DIR)/insightdock-charts-$(PKG_VERSION)
 
 PKG_MAINTAINER:=InsightDock contributors
 PKG_LICENSE:=MIT
@@ -35,7 +35,7 @@ define Package/insightdock
   SECTION:=libs
   CATEGORY:=Libraries
   TITLE:=Headless C++17 charting library (PNG/JPEG/SVG/PDF)
-  URL:=https://github.com/avazir/insightdock
+  URL:=https://github.com/aavazir/insightdock-charts
   DEPENDS:=+libstdcpp
 endef
 

@@ -1,8 +1,8 @@
 site_name: InsightDock Charts for C++
 site_description: Headless C++17 charting for PNG/JPEG/SVG/PDF reports — MIT licensed.
-site_url: https://avazir.github.io/insightdock/
-repo_url: https://github.com/avazir/insightdock
-repo_name: avazir/insightdock
+site_url: https://aavazir.github.io/insightdock-charts/
+repo_url: https://github.com/aavazir/insightdock-charts
+repo_name: aavazir/insightdock-charts
 edit_uri: edit/main/docs-site/
 
 docs_dir: docs-site

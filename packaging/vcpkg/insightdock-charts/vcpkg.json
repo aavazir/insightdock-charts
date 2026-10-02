@@ -2,7 +2,7 @@
   "name": "insightdock-charts",
   "version": "1.0.0",
   "description": "Headless C++17 charting library: pie, bar, line, area, combo and scatter charts to PNG, JPEG, SVG and PDF.",
-  "homepage": "https://github.com/avazir/insightdock",
+  "homepage": "https://github.com/aavazir/insightdock-charts",
   "license": "MIT",
   "supports": "!uwp",
   "dependencies": [

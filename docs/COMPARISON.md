@@ -6,7 +6,7 @@ honest: for several jobs another library is the better choice, and those are cal
 
 Versions and licenses were checked against each project's public documentation when this page was
 last edited (see [Maintenance](#maintenance)). Performance numbers live only in
-[BENCHMARKS.md](https://github.com/avazir/insightdock/blob/main/docs/BENCHMARKS.md).
+[BENCHMARKS.md](https://github.com/aavazir/insightdock-charts/blob/main/docs/BENCHMARKS.md).
 
 ## Which library should I use?
 
@@ -112,18 +112,18 @@ none of these and is not aiming at that niche for 1.0.
 - **No GUI toolkit, no Python, no Gnuplot.** The core is the C++ standard library plus vendored stb headers.
 - **Native vector SVG and PDF** for pie, bar, line, area and combo charts: real paths and selectable text. PDF output needs the optional PoDoFo dependency; scatter/bubble embeds a raster.
 - **Simple export API:** `ChartExporter::save(chart, "out.png")`, with the format inferred from the extension.
-- **Small, cross-compilable build:** a Make build for OpenWrt with selectable chart types, export formats and font mode. Sizes are in the [README](https://github.com/avazir/insightdock/blob/main/README.md).
+- **Small, cross-compilable build:** a Make build for OpenWrt with selectable chart types, export formats and font mode. Sizes are in the [README](https://github.com/aavazir/insightdock-charts/blob/main/README.md).
 - **Deterministic rendering** with an embedded font, so the same input gives the same chart on every machine.
 - **CI on Linux x86-64 and ARM64, macOS and Windows** (see the workflow for the current matrix).
 
 ## Where InsightDock is limited today
 
 - **Static output only.** No zoom, pan, tooltips or hit-testing.
-- **Chart catalogue.** No heatmap, box plot, radar, gauge, candlestick or 3D yet; see [ROADMAP.md](https://github.com/avazir/insightdock/blob/main/ROADMAP.md).
+- **Chart catalogue.** No heatmap, box plot, radar, gauge, candlestick or 3D yet; see [ROADMAP.md](https://github.com/aavazir/insightdock-charts/blob/main/ROADMAP.md).
 - **No error bars** in 1.0.
 - **Scatter and bubble** have no native vector output; they embed a raster in SVG and PDF.
 - **Text shaping.** Glyphs are drawn left to right from the TTF with no complex-script shaping and no right-to-left support. The embedded fonts cover ASCII or Latin-1/Latin-Ext; other scripts need a user-supplied TTF.
-- **Source compatibility only.** Binary (ABI) compatibility between releases is not promised; see the [release process](https://github.com/avazir/insightdock/blob/main/docs/RELEASE.md).
+- **Source compatibility only.** Binary (ABI) compatibility between releases is not promised; see the [release process](https://github.com/aavazir/insightdock-charts/blob/main/docs/RELEASE.md).
 - **Young project.** 1.0 is the first public release; the competitors above have years of field use.
 
 ---
@@ -131,5 +131,5 @@ none of these and is not aiming at that niche for 1.0.
 ## Maintenance
 
 - Update this file when adding chart types or export formats.
-- Do not add performance claims until [BENCHMARKS.md](https://github.com/avazir/insightdock/blob/main/docs/BENCHMARKS.md) has numbers that back them.
+- Do not add performance claims until [BENCHMARKS.md](https://github.com/aavazir/insightdock-charts/blob/main/docs/BENCHMARKS.md) has numbers that back them.
 - Before each release, re-check each competitor's license and feature list against its own documentation.

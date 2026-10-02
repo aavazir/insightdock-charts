@@ -1,6 +1,6 @@
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
-    REPO avazir/insightdock
+    REPO aavazir/insightdock-charts
     REF "v${VERSION}"
     # Replace with the real hash once the tag exists: `vcpkg install` prints the expected value.
     SHA512 0

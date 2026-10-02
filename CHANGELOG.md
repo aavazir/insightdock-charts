@@ -199,5 +199,6 @@ Release candidate for 1.0. The API is frozen for the feedback window except for 
 
 - PDF report example, vector PoDoFo pies, Tableau-10 palette
 
-[0.7.0]: https://github.com/avazir/insightdock/releases/tag/v0.7.0
-[0.6.0]: https://github.com/avazir/insightdock/releases/tag/v0.6.0
+[1.0.0-rc1]: https://github.com/aavazir/insightdock-charts/releases/tag/v1.0.0-rc1
+[0.7.0]: https://github.com/aavazir/insightdock-charts/releases/tag/v0.7.0
+[0.6.0]: https://github.com/aavazir/insightdock-charts/releases/tag/v0.6.0
