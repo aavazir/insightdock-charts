@@ -22,7 +22,7 @@ Header comments are Doxygen-style `///`, `@brief`, `@param`, `@return` — porta
 IntelliSense/clangd, [MrDocs](https://mrdocs.com) (the primary generator, Clang-based), hdoc, and
 Doxygen. If your IDE shows false-positive red squiggles (`file not found`, missing `std::`), run
 `./scripts/setup_clangd.sh` and reload the editor window. Full doc-tooling strategy, MrDocs/Doxygen
-generation commands, and the MkDocs site build: [DOCUMENTATION.md](DOCUMENTATION.md).
+generation commands, and the MkDocs site build: [DOCUMENTATION.md](https://github.com/aavazir/insightdock-charts/blob/main/docs/DOCUMENTATION.md).
 
 ## Documented headers
 
