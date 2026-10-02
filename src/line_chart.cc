@@ -55,11 +55,11 @@ void LineChart::draw_series(PlotContext &ctx) const {
         poly.push_back({curve_pts.front().first, y0});
         Color fill = ser.color;
         fill.a = fill_alpha;
-        ctx.buffer.fill_polygon(poly.data(), poly.size(), fill);
+        ctx.target.fill_polygon(poly.data(), poly.size(), fill);
       }
 
       if (curve_pts.size() >= 2) {
-        ctx.buffer.draw_dashed_polyline(curve_pts.data(), curve_pts.size(), line_width, ser.color,
+        ctx.target.draw_dashed_polyline(curve_pts.data(), curve_pts.size(), line_width, ser.color,
                                         dash);
       }
     }
@@ -67,7 +67,7 @@ void LineChart::draw_series(PlotContext &ctx) const {
     for (auto const &run : runs) {
       if (line_opts_.show_points) {
         for (auto const &p : run.pts) {
-          detail::draw_marker(ctx.buffer, p.first, p.second, line_opts_.point_radius, shape,
+          detail::draw_marker(ctx.target, p.first, p.second, line_opts_.point_radius, shape,
                               ser.color);
         }
       }
@@ -79,7 +79,7 @@ void LineChart::draw_series(PlotContext &ctx) const {
           if (!std::isfinite(val))
             val = 0.0;
           std::string text = detail::format_label_value(val, dl.format, dl.decimals);
-          label_font.draw_text(ctx.buffer, run.pts[k].first,
+          ctx.target.draw_text(label_font, run.pts[k].first,
                                run.pts[k].second - line_opts_.point_radius - 4.0f, text, dl.color,
                                TextAlign::Center, TextBaseline::Bottom);
         }

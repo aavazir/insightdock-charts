@@ -85,13 +85,13 @@ void BarChart::draw_grouped(PlotContext &ctx) const {
         by_top = y0;
         bh = t - y0;
       }
-      detail::fill_bar(ctx.buffer, bx, by_top, bar_w, bh, ser.color, bar_opts_.corner_radius,
+      detail::fill_bar(ctx.target, bx, by_top, bar_w, bh, ser.color, bar_opts_.corner_radius,
                        bar_opts_.border_color, bar_opts_.border_width);
 
       if (bar_opts_.data_labels.enabled) {
         auto const &dl = bar_opts_.data_labels;
         std::string text = detail::format_label_value(val, dl.format, dl.decimals);
-        label_font.draw_text(ctx.buffer, bx + bar_w * 0.5f, by_top - 4.0f, text, dl.color,
+        ctx.target.draw_text(label_font, bx + bar_w * 0.5f, by_top - 4.0f, text, dl.color,
                              TextAlign::Center, TextBaseline::Bottom);
       }
     }
@@ -122,13 +122,13 @@ void BarChart::draw_stacked(PlotContext &ctx) const {
       float py_bot = ctx.y_scale.to_pixel(y1);
       float top = std::min(py_top, py_bot);
       float height = std::fabs(py_top - py_bot);
-      detail::fill_bar(ctx.buffer, bx, top, bar_w, height, ser.color, bar_opts_.corner_radius,
+      detail::fill_bar(ctx.target, bx, top, bar_w, height, ser.color, bar_opts_.corner_radius,
                        bar_opts_.border_color, bar_opts_.border_width);
 
       if (bar_opts_.data_labels.enabled) {
         auto const &dl = bar_opts_.data_labels;
         std::string text = detail::format_label_value(val, dl.format, dl.decimals);
-        label_font.draw_text(ctx.buffer, bx + bar_w * 0.5f, top + height * 0.5f, text, dl.color,
+        ctx.target.draw_text(label_font, bx + bar_w * 0.5f, top + height * 0.5f, text, dl.color,
                              TextAlign::Center, TextBaseline::Middle);
       }
       stack = y2;
@@ -167,13 +167,13 @@ void BarChart::draw_grouped_horizontal(PlotContext &ctx) const {
         bx_left = bx_end;
         bw = x0 - bx_end;
       }
-      detail::fill_bar(ctx.buffer, bx_left, by, bw, bar_h, ser.color, bar_opts_.corner_radius,
+      detail::fill_bar(ctx.target, bx_left, by, bw, bar_h, ser.color, bar_opts_.corner_radius,
                        bar_opts_.border_color, bar_opts_.border_width);
 
       if (bar_opts_.data_labels.enabled) {
         auto const &dl = bar_opts_.data_labels;
         std::string text = detail::format_label_value(val, dl.format, dl.decimals);
-        label_font.draw_text(ctx.buffer, bx_end + 4.0f, by + bar_h * 0.5f, text, dl.color,
+        ctx.target.draw_text(label_font, bx_end + 4.0f, by + bar_h * 0.5f, text, dl.color,
                              TextAlign::Left, TextBaseline::Middle);
       }
     }
@@ -203,13 +203,13 @@ void BarChart::draw_stacked_horizontal(PlotContext &ctx) const {
       float px_start = ctx.y_scale.to_pixel(x1);
       float left = std::min(px_end, px_start);
       float width = std::fabs(px_end - px_start);
-      detail::fill_bar(ctx.buffer, left, by, width, bar_h, ser.color, bar_opts_.corner_radius,
+      detail::fill_bar(ctx.target, left, by, width, bar_h, ser.color, bar_opts_.corner_radius,
                        bar_opts_.border_color, bar_opts_.border_width);
 
       if (bar_opts_.data_labels.enabled) {
         auto const &dl = bar_opts_.data_labels;
         std::string text = detail::format_label_value(val, dl.format, dl.decimals);
-        label_font.draw_text(ctx.buffer, left + width * 0.5f, by + bar_h * 0.5f, text, dl.color,
+        ctx.target.draw_text(label_font, left + width * 0.5f, by + bar_h * 0.5f, text, dl.color,
                              TextAlign::Center, TextBaseline::Middle);
       }
       stack = x2;

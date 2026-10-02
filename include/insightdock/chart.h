@@ -11,6 +11,7 @@
 
 #include "insightdock/color.h"
 #include "insightdock/export_macros.h"
+#include "insightdock/draw_target.h"
 #include "insightdock/font.h"
 #include "insightdock/image_buffer.h"
 #include "insightdock/series_style.h"
@@ -120,6 +121,16 @@ public:
    * @return New @ref ImageBuffer at options().width × options().height.
    */
   virtual ImageBuffer render() const = 0;
+
+  /**
+   * @brief Draw the chart into an arbitrary @ref DrawTarget (raster, SVG, PDF).
+   * @return `false` (default) if this chart type has no target-based drawing path; callers then
+   *         fall back to @ref render(). All Cartesian charts (bar, line, area, combo) return true.
+   */
+  virtual bool draw(DrawTarget &target) const {
+    (void)target;
+    return false;
+  }
 
   /**
    * @brief Deep copy of this chart, or `nullptr` if the concrete type doesn't support it.

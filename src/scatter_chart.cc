@@ -52,6 +52,7 @@ void ScatterChart::clear_series() {
 
 ImageBuffer ScatterChart::render() const {
   ImageBuffer buf(options_.width, options_.height);
+  RasterTarget raster(buf);
   buf.clear(options_.background);
 
   if (series_.empty())
@@ -191,7 +192,7 @@ ImageBuffer ScatterChart::render() const {
                                        (opts_.max_bubble_radius - opts_.min_bubble_radius)
                              : opts_.max_bubble_radius;
       }
-      detail::draw_marker(buf, px, py, radius, opts_.point_shape, fill);
+      detail::draw_marker(raster, px, py, radius, opts_.point_shape, fill);
 
       if (opts_.data_labels.enabled) {
         auto const &dl = opts_.data_labels;

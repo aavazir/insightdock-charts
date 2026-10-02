@@ -190,7 +190,7 @@ public:
    * `PlotContext const&` parameter.
    */
   struct PlotContext {
-    ImageBuffer &buffer; ///< Target pixel buffer.
+    DrawTarget &target;  ///< Drawing surface (raster, SVG or PDF).
     Rect plot;           ///< Plot area rectangle (excluding margins).
     Scale x_scale;       ///< Category index, or continuous value, → pixel.
     Scale y_scale;       ///< Data value → pixel (primary, left axis).
@@ -286,6 +286,9 @@ public:
   /** @brief Render axes, grid, legend, and series to RGBA. */
   ImageBuffer render() const override;
 
+  /** @brief Draw the whole chart into @p target (raster, SVG or PDF). Returns true. */
+  bool draw(DrawTarget &target) const override;
+
 protected:
   /** @brief Draw bars, lines, or other series geometry (implemented by subclass). */
   virtual void draw_series(PlotContext &ctx) const = 0;
@@ -353,16 +356,16 @@ protected:
     return 0.0;
   }
   /** @brief Compute plot rectangle inside the image buffer. */
-  Rect compute_plot_rect(ImageBuffer const &buf, Font const &font) const;
+  Rect compute_plot_rect(float width, float height, Font const &font) const;
   /** @brief True when x-axis labels are drawn rotated 90° (grows the bottom margin). */
   bool x_labels_rotated() const;
   /** @brief Height of the x-axis label row (one line, or the longest label when rotated). */
   float x_label_row_height(Font const &font) const;
 
-  void draw_background(ImageBuffer &buf) const;
-  void draw_title(ImageBuffer &buf, Font &font) const;
+  void draw_background(DrawTarget &buf) const;
+  void draw_title(DrawTarget &buf, Font &font) const;
   void draw_axes_and_grid(PlotContext &ctx) const;
-  void draw_legend(ImageBuffer &buf, Font &font, Rect plot) const;
+  void draw_legend(DrawTarget &buf, Font &font, Rect plot) const;
 
   std::vector<std::string> categories_;
   std::vector<DataSeries> series_;

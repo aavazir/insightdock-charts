@@ -42,6 +42,7 @@ SRCS = \
   src/svg_writer.cc \
   src/tick_format.cc \
   src/spline.cc \
+  src/raster_target.cc \
   src/marker.cc \
   src/bar_shape.cc \
   src/reference_lines.cc

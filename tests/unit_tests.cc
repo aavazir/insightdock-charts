@@ -788,8 +788,12 @@ static void test_draw_marker_square_fills_corners_circle_does_not() {
   ImageBuffer circle_buf(20, 20);
   square_buf.clear(Color::rgba(0, 0, 0, 0));
   circle_buf.clear(Color::rgba(0, 0, 0, 0));
-  detail::draw_marker(square_buf, 10.0f, 10.0f, 6.0f, PointMarkerShape::Square, Color::black());
-  detail::draw_marker(circle_buf, 10.0f, 10.0f, 6.0f, PointMarkerShape::Circle, Color::black());
+  RasterTarget square_target(square_buf);
+  RasterTarget circle_target(circle_buf);
+  detail::draw_marker(square_target, 10.0f, 10.0f, 6.0f, PointMarkerShape::Square,
+                      Color::black());
+  detail::draw_marker(circle_target, 10.0f, 10.0f, 6.0f, PointMarkerShape::Circle,
+                      Color::black());
 
   // A point near the marker's bounding-box corner is inside a square marker's footprint
   // but outside a circle's — this is how chart code can trust the shapes actually differ.

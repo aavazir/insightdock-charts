@@ -34,12 +34,12 @@ void draw_band(CartesianChart::PlotContext const &ctx, ReferenceBand const &band
     pts[2] = {right, plot.bottom()};
     pts[3] = {left, plot.bottom()};
   }
-  ctx.buffer.fill_polygon(pts, 4, band.color);
+  ctx.target.fill_polygon(pts, 4, band.color);
 
   if (!band.label.empty()) {
     Color text_color = band.color;
     text_color.a = 255;
-    ctx.font.draw_text(ctx.buffer, pts[0].first + 4.0f, pts[0].second + 4.0f, band.label,
+    ctx.target.draw_text(ctx.font, pts[0].first + 4.0f, pts[0].second + 4.0f, band.label,
                        text_color, TextAlign::Left, TextBaseline::Top);
   }
 }
@@ -52,20 +52,20 @@ void draw_line(CartesianChart::PlotContext const &ctx, ReferenceLine const &line
     float py = scale.to_pixel(line.value);
     if (py < plot.top() || py > plot.bottom())
       return;
-    ctx.buffer.draw_dashed_line(plot.left(), py, plot.right(), py, line.width, line.color,
+    ctx.target.draw_dashed_line(plot.left(), py, plot.right(), py, line.width, line.color,
                                 line.dash);
     if (!line.label.empty()) {
-      ctx.font.draw_text(ctx.buffer, plot.right() - 4.0f, py - 4.0f, line.label, line.color,
+      ctx.target.draw_text(ctx.font, plot.right() - 4.0f, py - 4.0f, line.label, line.color,
                          TextAlign::Right, TextBaseline::Bottom);
     }
   } else {
     float px = ctx.x_scale.to_pixel(line.value);
     if (px < plot.left() || px > plot.right())
       return;
-    ctx.buffer.draw_dashed_line(px, plot.top(), px, plot.bottom(), line.width, line.color,
+    ctx.target.draw_dashed_line(px, plot.top(), px, plot.bottom(), line.width, line.color,
                                 line.dash);
     if (!line.label.empty()) {
-      ctx.font.draw_text(ctx.buffer, px + 4.0f, plot.top() + 4.0f, line.label, line.color,
+      ctx.target.draw_text(ctx.font, px + 4.0f, plot.top() + 4.0f, line.label, line.color,
                          TextAlign::Left, TextBaseline::Top);
     }
   }

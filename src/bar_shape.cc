@@ -7,7 +7,7 @@
 
 namespace insightdock::charts::detail {
 
-void fill_bar(ImageBuffer &buffer, float x, float y, float w, float h, Color const &fill_color,
+void fill_bar(DrawTarget &buffer, float x, float y, float w, float h, Color const &fill_color,
               float corner_radius, Color const &border_color, float border_width) {
   if (corner_radius > 0.0f)
     buffer.fill_rounded_rect(x, y, w, h, corner_radius, fill_color);

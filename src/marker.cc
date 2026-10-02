@@ -8,7 +8,7 @@
 
 namespace insightdock::charts::detail {
 
-void draw_marker(ImageBuffer &buffer, float x, float y, float radius, PointMarkerShape shape,
+void draw_marker(DrawTarget &buffer, float x, float y, float radius, PointMarkerShape shape,
                  Color const &color) {
   switch (shape) {
   case PointMarkerShape::Circle:

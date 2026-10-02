@@ -65,17 +65,17 @@ void AreaChart::draw_series(PlotContext &ctx) const {
       if (poly.size() >= 3) {
         Color fill = ser.color;
         fill.a = fill_alpha;
-        ctx.buffer.fill_polygon(poly.data(), poly.size(), fill);
+        ctx.target.fill_polygon(poly.data(), poly.size(), fill);
       }
 
       if (area_opts_.show_line && top_curve.size() >= 2) {
-        ctx.buffer.draw_dashed_polyline(top_curve.data(), top_curve.size(), line_width, ser.color,
+        ctx.target.draw_dashed_polyline(top_curve.data(), top_curve.size(), line_width, ser.color,
                                         dash);
       }
 
       if (area_opts_.show_points) {
         for (auto const &p : top_pts) {
-          detail::draw_marker(ctx.buffer, p.first, p.second, area_opts_.point_radius, shape,
+          detail::draw_marker(ctx.target, p.first, p.second, area_opts_.point_radius, shape,
                               ser.color);
         }
       }
@@ -87,7 +87,7 @@ void AreaChart::draw_series(PlotContext &ctx) const {
           if (!std::isfinite(val))
             val = 0.0;
           std::string text = detail::format_label_value(val, dl.format, dl.decimals);
-          label_font.draw_text(ctx.buffer, top_pts[i].first, top_pts[i].second - 4.0f, text,
+          ctx.target.draw_text(label_font, top_pts[i].first, top_pts[i].second - 4.0f, text,
                                dl.color, TextAlign::Center, TextBaseline::Bottom);
         }
       }
@@ -122,15 +122,15 @@ void AreaChart::draw_series(PlotContext &ctx) const {
       poly.push_back({curve.front().first, y0});
       Color fill = ser.color;
       fill.a = fill_alpha;
-      ctx.buffer.fill_polygon(poly.data(), poly.size(), fill);
+      ctx.target.fill_polygon(poly.data(), poly.size(), fill);
 
       if (area_opts_.show_line) {
-        ctx.buffer.draw_dashed_polyline(curve.data(), curve.size(), line_width, ser.color, dash);
+        ctx.target.draw_dashed_polyline(curve.data(), curve.size(), line_width, ser.color, dash);
       }
 
       if (area_opts_.show_points) {
         for (auto const &p : pts) {
-          detail::draw_marker(ctx.buffer, p.first, p.second, area_opts_.point_radius, shape,
+          detail::draw_marker(ctx.target, p.first, p.second, area_opts_.point_radius, shape,
                               ser.color);
         }
       }
@@ -142,7 +142,7 @@ void AreaChart::draw_series(PlotContext &ctx) const {
           if (!std::isfinite(val))
             val = 0.0;
           std::string text = detail::format_label_value(val, dl.format, dl.decimals);
-          label_font.draw_text(ctx.buffer, pts[k].first, pts[k].second - 4.0f, text, dl.color,
+          ctx.target.draw_text(label_font, pts[k].first, pts[k].second - 4.0f, text, dl.color,
                                TextAlign::Center, TextBaseline::Bottom);
         }
       }

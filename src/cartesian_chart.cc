@@ -123,9 +123,7 @@ float CartesianChart::x_label_row_height(Font const &font) const {
   return row;
 }
 
-Rect CartesianChart::compute_plot_rect(ImageBuffer const &buf, Font const &font) const {
-  float w = static_cast<float>(buf.width());
-  float h = static_cast<float>(buf.height());
+Rect CartesianChart::compute_plot_rect(float w, float h, Font const &font) const {
   Margins m = options_.margins;
 
   if (!options_.title.empty()) {
@@ -165,23 +163,23 @@ Rect CartesianChart::compute_plot_rect(ImageBuffer const &buf, Font const &font)
   return Rect(m.left, m.top, w - m.left - m.right, h - m.top - m.bottom);
 }
 
-void CartesianChart::draw_background(ImageBuffer &buf) const {
+void CartesianChart::draw_background(DrawTarget &buf) const {
   buf.clear(options_.background);
 }
 
-void CartesianChart::draw_title(ImageBuffer &buf, Font &font) const {
+void CartesianChart::draw_title(DrawTarget &buf, Font &font) const {
   if (options_.title.empty())
     return;
   font.set_size(options_.font_size + 4.0f);
   float tw = font.measure_width(options_.title);
-  float x = (static_cast<float>(buf.width()) - tw) * 0.5f;
-  font.draw_text(buf, x, 12.0f, options_.title, options_.title_color, TextAlign::Left,
+  float x = (buf.width() - tw) * 0.5f;
+  buf.draw_text(font, x, 12.0f, options_.title, options_.title_color, TextAlign::Left,
                  TextBaseline::Top);
   font.set_size(options_.font_size);
 }
 
 void CartesianChart::draw_axes_and_grid(PlotContext &ctx) const {
-  auto &buf = ctx.buffer;
+  auto &buf = ctx.target;
   Rect const &plot = ctx.plot;
   Font font(options_.font);
   font.set_size(ctx.opts.font_size);
@@ -212,7 +210,7 @@ void CartesianChart::draw_axes_and_grid(PlotContext &ctx) const {
         buf.draw_line(px, plot.top(), px, plot.bottom(), 1.0f, ctx.opts.grid_color);
       std::string label = detail::format_tick_value(v, ctx.cart_opts.y_tick_format,
                                                     ctx.cart_opts.custom_y_formatter);
-      font.draw_text(buf, px, plot.bottom() + 8.0f, label, ctx.opts.text_color, TextAlign::Center,
+      buf.draw_text(font, px, plot.bottom() + 8.0f, label, ctx.opts.text_color, TextAlign::Center,
                      TextBaseline::Top);
     }
   } else {
@@ -227,7 +225,7 @@ void CartesianChart::draw_axes_and_grid(PlotContext &ctx) const {
 
       std::string label = detail::format_tick_value(v, ctx.cart_opts.y_tick_format,
                                                     ctx.cart_opts.custom_y_formatter);
-      font.draw_text(buf, plot.left() - 8.0f, py, label, ctx.opts.text_color, TextAlign::Right,
+      buf.draw_text(font, plot.left() - 8.0f, py, label, ctx.opts.text_color, TextAlign::Right,
                      TextBaseline::Middle);
     }
   }
@@ -242,7 +240,7 @@ void CartesianChart::draw_axes_and_grid(PlotContext &ctx) const {
 
       std::string label = detail::format_tick_value(v, ctx.cart_opts.y2_tick_format,
                                                     ctx.cart_opts.custom_y2_formatter);
-      font.draw_text(buf, plot.right() + 8.0f, py, label, ctx.opts.text_color, TextAlign::Left,
+      buf.draw_text(font, plot.right() + 8.0f, py, label, ctx.opts.text_color, TextAlign::Left,
                      TextBaseline::Middle);
     }
   }
@@ -257,7 +255,7 @@ void CartesianChart::draw_axes_and_grid(PlotContext &ctx) const {
     float slot = plot.h / static_cast<float>(n_cats);
     for (std::size_t i = 0; i < ctx.categories.size(); ++i) {
       float py = plot.top() + slot * (static_cast<float>(i) + 0.5f);
-      font.draw_text(buf, plot.left() - 8.0f, py, ctx.categories[i], ctx.opts.text_color,
+      buf.draw_text(font, plot.left() - 8.0f, py, ctx.categories[i], ctx.opts.text_color,
                      TextAlign::Right, TextBaseline::Middle);
     }
   } else if (ctx.continuous_x) {
@@ -271,7 +269,7 @@ void CartesianChart::draw_axes_and_grid(PlotContext &ctx) const {
       if (ctx.opts.show_grid)
         buf.draw_line(cx, plot.top(), cx, plot.bottom(), 1.0f, ctx.opts.grid_color);
       std::string label = detail::format_tick_value(v, TickFormat::DateTime, nullptr);
-      font.draw_text(buf, cx, plot.bottom() + 8.0f, label, ctx.opts.text_color, TextAlign::Center,
+      buf.draw_text(font, cx, plot.bottom() + 8.0f, label, ctx.opts.text_color, TextAlign::Center,
                      TextBaseline::Top);
     }
   } else {
@@ -315,14 +313,14 @@ void CartesianChart::draw_axes_and_grid(PlotContext &ctx) const {
       if (mode == CartesianOptions::XLabelMode::Rotate90) {
         // Text reads bottom-to-top, so its end sits against the axis.
         float w = font.measure_width(ctx.categories[i]);
-        font.draw_text_rotated_ccw(buf, cx, plot.bottom() + 8.0f + w * 0.5f + 1.0f,
+        buf.draw_text_rotated_ccw(font, cx, plot.bottom() + 8.0f + w * 0.5f + 1.0f,
                                    ctx.categories[i], ctx.opts.text_color);
         continue;
       }
       std::string label = ctx.categories[i];
       if (mode == CartesianOptions::XLabelMode::Truncate)
         label = truncate_to_width(font, label, slot * static_cast<float>(step) - 4.0f);
-      font.draw_text(buf, cx, plot.bottom() + 8.0f, label, ctx.opts.text_color, TextAlign::Center,
+      buf.draw_text(font, cx, plot.bottom() + 8.0f, label, ctx.opts.text_color, TextAlign::Center,
                      TextBaseline::Top);
     }
   }
@@ -337,16 +335,16 @@ void CartesianChart::draw_axes_and_grid(PlotContext &ctx) const {
   // Axis titles
   if (!ctx.cart_opts.y_axis_label.empty()) {
     float lh = font.line_height();
-    font.draw_text_rotated_ccw(buf, lh * 0.5f + 4.0f, plot.center_y(), ctx.cart_opts.y_axis_label,
+    buf.draw_text_rotated_ccw(font, lh * 0.5f + 4.0f, plot.center_y(), ctx.cart_opts.y_axis_label,
                                ctx.opts.text_color);
   }
   if (ctx.has_y2 && !ctx.cart_opts.y2_axis_label.empty()) {
     float lh = font.line_height();
-    font.draw_text_rotated_cw(buf, static_cast<float>(buf.width()) - lh * 0.5f - 4.0f,
+    buf.draw_text_rotated_cw(font, buf.width() - lh * 0.5f - 4.0f,
                               plot.center_y(), ctx.cart_opts.y2_axis_label, ctx.opts.text_color);
   }
   if (!ctx.cart_opts.x_axis_label.empty()) {
-    font.draw_text(buf, plot.center_x(), static_cast<float>(buf.height()) - 8.0f,
+    buf.draw_text(font, plot.center_x(), buf.height() - 8.0f,
                    ctx.cart_opts.x_axis_label, ctx.opts.text_color, TextAlign::Center,
                    TextBaseline::Bottom);
   }
@@ -356,7 +354,7 @@ namespace {
 
 // Legend swatch: a filled square, or — for a series with per-series dash/marker overrides — a
 // short line sample showing that dash and marker so the legend identifies the series' style.
-void draw_legend_swatch(ImageBuffer &buf, DataSeries const &s, float x, float y, float box) {
+void draw_legend_swatch(DrawTarget &buf, DataSeries const &s, float x, float y, float box) {
   if (!s.style.dash && !s.style.marker) {
     buf.fill_rect(x, y, box, box, s.color);
     return;
@@ -373,7 +371,7 @@ void draw_legend_swatch(ImageBuffer &buf, DataSeries const &s, float x, float y,
 
 } // namespace
 
-void CartesianChart::draw_legend(ImageBuffer &buf, Font &font, Rect plot) const {
+void CartesianChart::draw_legend(DrawTarget &buf, Font &font, Rect plot) const {
   if (!options_.legend.enabled || series_.empty())
     return;
 
@@ -386,7 +384,7 @@ void CartesianChart::draw_legend(ImageBuffer &buf, Font &font, Rect plot) const 
   }
   float total_w =
       item_w * static_cast<float>(series_.size()) + gap * static_cast<float>(series_.size() - 1);
-  float x = (static_cast<float>(buf.width()) - total_w) * 0.5f;
+  float x = (buf.width() - total_w) * 0.5f;
   // Position legend below x-axis category labels: gap + label row + gap
   float y = plot.bottom() + 8.0f + x_label_row_height(font) + 8.0f;
 
@@ -396,7 +394,7 @@ void CartesianChart::draw_legend(ImageBuffer &buf, Font &font, Rect plot) const 
     for (std::size_t i = 0; i < series_.size(); ++i) {
       auto const &s = series_[i];
       draw_legend_swatch(buf, s, x, y, box);
-      font.draw_text(buf, x + box + 6.0f, y + box * 0.5f, s.label, options_.text_color,
+      buf.draw_text(font, x + box + 6.0f, y + box * 0.5f, s.label, options_.text_color,
                      TextAlign::Left, TextBaseline::Middle);
       y += box + 8.0f;
     }
@@ -405,23 +403,29 @@ void CartesianChart::draw_legend(ImageBuffer &buf, Font &font, Rect plot) const 
 
   for (auto const &s : series_) {
     draw_legend_swatch(buf, s, x, y, box);
-    font.draw_text(buf, x + box + 6.0f, y + box * 0.5f, s.label, options_.text_color,
+    buf.draw_text(font, x + box + 6.0f, y + box * 0.5f, s.label, options_.text_color,
                    TextAlign::Left, TextBaseline::Middle);
     x += item_w + gap;
   }
 }
 
 ImageBuffer CartesianChart::render() const {
-  ImageBuffer buf(options_.width, options_.height);
+  ImageBuffer img(options_.width, options_.height);
+  RasterTarget target(img);
+  draw(target);
+  return img;
+}
+
+bool CartesianChart::draw(DrawTarget &buf) const {
   draw_background(buf);
 
   Font font(options_.font);
   font.set_size(options_.font_size);
   draw_title(buf, font);
 
-  Rect plot = compute_plot_rect(buf, font);
+  Rect plot = compute_plot_rect(buf.width(), buf.height(), font);
   if (plot.w <= 0.0f || plot.h <= 0.0f)
-    return buf;
+    return true;
 
   double ymin = compute_y_min();
   double ymax = compute_y_max();
@@ -479,7 +483,7 @@ ImageBuffer CartesianChart::render() const {
   draw_overlay(ctx);
   draw_legend(buf, font, plot);
 
-  return buf;
+  return true;
 }
 
 } // namespace insightdock::charts

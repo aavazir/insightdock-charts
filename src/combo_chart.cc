@@ -157,13 +157,13 @@ void ComboChart::draw_series(PlotContext &ctx) const {
         by_top = y0;
         bh = -bh;
       }
-      detail::fill_bar(ctx.buffer, bx, by_top, bar_w, bh, ser.color, bar_opts_.corner_radius,
+      detail::fill_bar(ctx.target, bx, by_top, bar_w, bh, ser.color, bar_opts_.corner_radius,
                        bar_opts_.border_color, bar_opts_.border_width);
 
       if (bar_opts_.data_labels.enabled) {
         auto const &dl = bar_opts_.data_labels;
         std::string text = detail::format_label_value(val, dl.format, dl.decimals);
-        bar_label_font.draw_text(ctx.buffer, bx + bar_w * 0.5f, by_top - 4.0f, text, dl.color,
+        ctx.target.draw_text(bar_label_font, bx + bar_w * 0.5f, by_top - 4.0f, text, dl.color,
                                  TextAlign::Center, TextBaseline::Bottom);
       }
     }
@@ -201,14 +201,14 @@ void ComboChart::draw_overlay(PlotContext &ctx) const {
       std::vector<std::pair<float, float>> curve =
           line_opts_.spline ? detail::catmull_rom_expand(run.pts) : run.pts;
       if (curve.size() >= 2) {
-        ctx.buffer.draw_dashed_polyline(curve.data(), curve.size(), line_width, ser.color, dash);
+        ctx.target.draw_dashed_polyline(curve.data(), curve.size(), line_width, ser.color, dash);
       }
     }
 
     for (auto const &run : runs) {
       if (line_opts_.show_points) {
         for (auto const &p : run.pts)
-          detail::draw_marker(ctx.buffer, p.first, p.second, line_opts_.point_radius, shape,
+          detail::draw_marker(ctx.target, p.first, p.second, line_opts_.point_radius, shape,
                               ser.color);
       }
 
@@ -219,7 +219,7 @@ void ComboChart::draw_overlay(PlotContext &ctx) const {
           if (!std::isfinite(val))
             val = 0.0;
           std::string text = detail::format_label_value(val, dl.format, dl.decimals);
-          line_label_font.draw_text(ctx.buffer, run.pts[k].first,
+          ctx.target.draw_text(line_label_font, run.pts[k].first,
                                     run.pts[k].second - line_opts_.point_radius - 4.0f, text,
                                     dl.color, TextAlign::Center, TextBaseline::Bottom);
         }
