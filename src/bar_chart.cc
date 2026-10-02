@@ -67,7 +67,7 @@ void BarChart::draw_grouped(PlotContext &ctx) const {
 
   float y0 = ctx.y_scale.to_pixel(ctx.y_scale.min());
 
-  Font label_font;
+  Font label_font(options_.font);
   if (bar_opts_.data_labels.enabled)
     label_font.set_size(bar_opts_.data_labels.font_size);
 
@@ -107,7 +107,7 @@ void BarChart::draw_stacked(PlotContext &ctx) const {
   float bar_w = slot * (1.0f - bar_opts_.group_gap);
   float y_base = ctx.y_scale.to_pixel(0.0);
 
-  Font label_font;
+  Font label_font(options_.font);
   if (bar_opts_.data_labels.enabled)
     label_font.set_size(bar_opts_.data_labels.font_size);
 
@@ -150,7 +150,7 @@ void BarChart::draw_grouped_horizontal(PlotContext &ctx) const {
 
   float x0 = ctx.y_scale.to_pixel(ctx.y_scale.min());
 
-  Font label_font;
+  Font label_font(options_.font);
   if (bar_opts_.data_labels.enabled)
     label_font.set_size(bar_opts_.data_labels.font_size);
 
@@ -188,7 +188,7 @@ void BarChart::draw_stacked_horizontal(PlotContext &ctx) const {
   float slot = ctx.plot.h / static_cast<float>(ncat);
   float bar_h = slot * (1.0f - bar_opts_.group_gap);
 
-  Font label_font;
+  Font label_font(options_.font);
   if (bar_opts_.data_labels.enabled)
     label_font.set_size(bar_opts_.data_labels.font_size);
 

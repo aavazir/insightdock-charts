@@ -20,7 +20,7 @@ void LineChart::draw_series(PlotContext &ctx) const {
 
   float slot = ctx.continuous_x ? 0.0f : ctx.plot.w / static_cast<float>(ncat);
 
-  Font label_font;
+  Font label_font(options_.font);
   if (line_opts_.data_labels.enabled)
     label_font.set_size(line_opts_.data_labels.font_size);
 

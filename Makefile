@@ -19,6 +19,7 @@ EXPORT_FORMATS ?= png jpeg
 
 # Font mode:
 #   embedded — bakes a ~20 KB ASCII TTF into the library (zero runtime deps)
+#   embedded-latin — like embedded, but ASCII + Latin-1 + Latin Extended-A (~22 KB)
 #   system   — no embedded font; call Font::load_from_file("/path/to/font.ttf")
 #              at startup. Use when OpenWrt already ships a TTF in /www/assets/.
 FONT_MODE      ?= embedded
@@ -76,6 +77,9 @@ ifeq ($(filter jpeg,$(EXPORT_FORMATS)),)
 endif
 
 # ── Font mode ─────────────────────────────────────────────────────────────────
+ifeq ($(FONT_MODE),embedded-latin)
+  CXXFLAGS += -DINSIGHTDOCK_FONT_LATIN
+endif
 ifeq ($(FONT_MODE),system)
   CXXFLAGS += -DINSIGHTDOCK_NO_EMBEDDED_FONT
 endif
@@ -115,7 +119,7 @@ bar_line_example: examples/bar_line_example.cc $(LIB)
 	$(CXX) $(CXXFLAGS) $(INCLUDES) examples/bar_line_example.cc $(LIB) -o $@
 
 unit_tests: tests/unit_tests.cc $(LIB)
-	$(CXX) $(CXXFLAGS) $(INCLUDES) tests/unit_tests.cc $(LIB) -o $@
+	$(CXX) $(CXXFLAGS) $(INCLUDES) tests/unit_tests.cc $(LIB) -pthread -o $@
 
 # Unit tests need every chart type (the default CHART_TYPES).
 test: examples unit_tests

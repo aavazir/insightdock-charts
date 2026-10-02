@@ -61,6 +61,10 @@ struct BarOptions {
  */
 class BarChart : public CartesianChart {
 public:
+  std::unique_ptr<Chart> clone() const override {
+    return std::make_unique<BarChart>(*this);
+  }
+
   /** @brief Mutable access to all bar layout/shape/label options. */
   BarOptions &bar_options() {
     return bar_opts_;

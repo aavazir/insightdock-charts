@@ -37,6 +37,10 @@ struct AreaChartOptions {
  */
 class AreaChart : public CartesianChart {
 public:
+  std::unique_ptr<Chart> clone() const override {
+    return std::make_unique<AreaChart>(*this);
+  }
+
   AreaChartOptions &area_options() {
     return area_opts_;
   }

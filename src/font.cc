@@ -4,13 +4,18 @@
 #include "insightdock/font.h"
 
 #ifndef INSIGHTDOCK_NO_EMBEDDED_FONT
+#ifdef INSIGHTDOCK_FONT_LATIN
+#include "insightdock/embedded_font_latin.h"
+#else
 #include "insightdock/embedded_font.h"
+#endif
 #endif
 
 #define STB_TRUETYPE_IMPLEMENTATION
 #define STBTT_STATIC
 #include "../third_party/stb_truetype.h"
 
+#include <algorithm>
 #include <cmath>
 #include <cstring>
 #include <fstream>
@@ -25,28 +30,106 @@ struct Font::FontState {
   int line_gap = 0;
 };
 
-Font::Font() {
-#ifdef INSIGHTDOCK_NO_EMBEDDED_FONT
-  // No embedded font; call load_from_file() before drawing text.
-#else
-  load_from_memory(embedded_font::data, embedded_font::size);
-#endif
+namespace {
+
+constexpr std::size_t kMaxFontBytes = std::size_t{64} << 20;
+
+bool parseable(unsigned char const *data, std::size_t size) {
+  if (!data || size < 12 || size > kMaxFontBytes)
+    return false;
+  int off = stbtt_GetFontOffsetForIndex(data, 0);
+  if (off < 0)
+    return false;
+  stbtt_fontinfo info{};
+  return stbtt_InitFont(&info, data, off) != 0;
 }
 
-Font::Font(std::vector<unsigned char> ttf_data) : ttf_data_(std::move(ttf_data)) {
+// Decodes one UTF-8 code point starting at text[i] and advances i. Malformed sequences yield
+// U+FFFD (consuming one byte) so the caller never loops or reads past the end.
+int next_codepoint(std::string const &text, std::size_t &i) {
+  unsigned char c = static_cast<unsigned char>(text[i++]);
+  if (c < 0x80)
+    return c;
+  int extra;
+  int cp;
+  if ((c & 0xE0) == 0xC0) {
+    extra = 1;
+    cp = c & 0x1F;
+  } else if ((c & 0xF0) == 0xE0) {
+    extra = 2;
+    cp = c & 0x0F;
+  } else if ((c & 0xF8) == 0xF0) {
+    extra = 3;
+    cp = c & 0x07;
+  } else {
+    return 0xFFFD;
+  }
+  if (i + static_cast<std::size_t>(extra) > text.size())
+    return 0xFFFD;
+  for (int k = 0; k < extra; ++k) {
+    unsigned char cc = static_cast<unsigned char>(text[i + static_cast<std::size_t>(k)]);
+    if ((cc & 0xC0) != 0x80)
+      return 0xFFFD;
+    cp = (cp << 6) | (cc & 0x3F);
+  }
+  i += static_cast<std::size_t>(extra);
+  static constexpr int kMin[] = {0, 0x80, 0x800, 0x10000};
+  if (cp < kMin[extra] || cp > 0x10FFFF || (cp >= 0xD800 && cp <= 0xDFFF))
+    return 0xFFFD;
+  return cp;
+}
+
+} // namespace
+
+FontDataPtr load_font_data(char const *path) {
+  if (!path)
+    return nullptr;
+  std::ifstream ifs(path, std::ios::binary);
+  if (!ifs)
+    return nullptr;
+  auto data = std::make_shared<FontData>(std::istreambuf_iterator<char>(ifs),
+                                         std::istreambuf_iterator<char>());
+  if (!parseable(data->data(), data->size()))
+    return nullptr;
+  return data;
+}
+
+FontDataPtr make_font_data(unsigned char const *data, std::size_t size) {
+  if (!parseable(data, size))
+    return nullptr;
+  return std::make_shared<FontData>(data, data + size);
+}
+
+Font::Font() : Font(FontDataPtr{}) {}
+
+Font::Font(FontDataPtr data) : ttf_(std::move(data)) {
+  if (!ttf_) {
+#ifndef INSIGHTDOCK_NO_EMBEDDED_FONT
+    load_from_memory(embedded_font::data, embedded_font::size);
+#endif
+    // Otherwise no embedded font: call load_from_file() before drawing text.
+    return;
+  }
+  init_font();
+}
+
+Font::Font(std::vector<unsigned char> ttf_data)
+    : ttf_(std::make_shared<FontData>(std::move(ttf_data))) {
   init_font();
 }
 
 bool Font::load_from_file(char const *path) {
-  std::ifstream ifs(path, std::ios::binary);
-  if (!ifs)
+  auto data = load_font_data(path);
+  if (!data)
     return false;
-  ttf_data_.assign(std::istreambuf_iterator<char>(ifs), std::istreambuf_iterator<char>());
+  ttf_ = std::move(data);
   return init_font();
 }
 
 bool Font::load_from_memory(unsigned char const *data, std::size_t size) {
-  ttf_data_.assign(data, data + size);
+  if (!data || size > kMaxFontBytes)
+    return false;
+  ttf_ = std::make_shared<FontData>(data, data + size);
   return init_font();
 }
 
@@ -60,12 +143,12 @@ bool Font::init_font() {
   delete state_;
   state_ = nullptr;
   loaded_ = false;
-  if (ttf_data_.empty())
+  if (!ttf_ || ttf_->empty())
     return false;
 
+  int off = stbtt_GetFontOffsetForIndex(ttf_->data(), 0);
   state_ = new FontState();
-  if (!stbtt_InitFont(&state_->info, ttf_data_.data(),
-                      stbtt_GetFontOffsetForIndex(ttf_data_.data(), 0))) {
+  if (off < 0 || !stbtt_InitFont(&state_->info, ttf_->data(), off)) {
     delete state_;
     state_ = nullptr;
     return false;
@@ -75,6 +158,13 @@ bool Font::init_font() {
   stbtt_GetFontVMetrics(&state_->info, &state_->ascent, &state_->descent, &state_->line_gap);
   loaded_ = true;
   return true;
+}
+
+// Maps a code point the font can't draw to '?' so missing glyphs are visible but harmless.
+int Font::resolve_glyph(int cp) const {
+  if (stbtt_FindGlyphIndex(&state_->info, cp) != 0)
+    return cp;
+  return '?';
 }
 
 float Font::line_height() const {
@@ -104,12 +194,21 @@ float Font::baseline_offset(TextBaseline baseline) const {
 float Font::measure_width(std::string const &text) const {
   if (!loaded_ || !state_)
     return 0.0f;
+  float best = 0.0f;
   float width = 0.0f;
   int prev = 0;
-  for (unsigned char c : text) {
-    int cp = c;
-    if (cp < 32 || cp > 127)
+  std::size_t i = 0;
+  while (i < text.size()) {
+    int cp = next_codepoint(text, i);
+    if (cp == '\n') {
+      best = std::max(best, width);
+      width = 0.0f;
+      prev = 0;
       continue;
+    }
+    if (cp < 32)
+      continue;
+    cp = resolve_glyph(cp);
     int advance, lsb;
     stbtt_GetCodepointHMetrics(&state_->info, cp, &advance, &lsb);
     width += advance * state_->scale;
@@ -118,7 +217,7 @@ float Font::measure_width(std::string const &text) const {
     }
     prev = cp;
   }
-  return width;
+  return std::max(best, width);
 }
 
 void Font::draw_text(ImageBuffer &buffer, float x, float y, std::string const &text,
@@ -143,8 +242,9 @@ void Font::draw_text(ImageBuffer &buffer, float x, float y, std::string const &t
   int prev = 0;
   float cursor_x = bx;
 
-  for (unsigned char c : text) {
-    int cp = c;
+  std::size_t ti = 0;
+  while (ti < text.size()) {
+    int cp = next_codepoint(text, ti);
     if (cp == '\n') {
       cursor_x = bx;
       by += line_height();
@@ -153,10 +253,7 @@ void Font::draw_text(ImageBuffer &buffer, float x, float y, std::string const &t
     }
     if (cp < 32)
       continue;
-    // Skip multi-byte UTF-8 continuation (0x80-0xBF) and leading (0xC0+) bytes;
-    // the embedded font only covers ASCII so these produce no glyph anyway.
-    if (cp > 127)
-      continue;
+    cp = resolve_glyph(cp);
 
     int advance, lsb;
     stbtt_GetCodepointHMetrics(&state_->info, cp, &advance, &lsb);

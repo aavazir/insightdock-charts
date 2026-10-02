@@ -129,7 +129,7 @@ void ComboChart::draw_series(PlotContext &ctx) const {
   // zero baseline is plot.bottom() regardless of which axis a series uses.
   float y0 = ctx.plot.bottom();
 
-  Font bar_label_font;
+  Font bar_label_font(options_.font);
   if (bar_opts_.data_labels.enabled)
     bar_label_font.set_size(bar_opts_.data_labels.font_size);
 
@@ -170,7 +170,7 @@ void ComboChart::draw_overlay(PlotContext &ctx) const {
   std::size_t ncat = std::max<std::size_t>(ctx.categories.size(), 1);
   float slot = ctx.plot.w / static_cast<float>(ncat);
 
-  Font line_label_font;
+  Font line_label_font(options_.font);
   if (line_opts_.data_labels.enabled)
     line_label_font.set_size(line_opts_.data_labels.font_size);
 

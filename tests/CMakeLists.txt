@@ -9,7 +9,11 @@ set_tests_properties(smoke_render_png PROPERTIES WORKING_DIRECTORY ${CMAKE_BINAR
 
 # --- Unit tests: Scale, Palette, ImageBuffer, ChartResult, theme ---
 add_executable(insightdock_unit_tests unit_tests.cc)
-target_link_libraries(insightdock_unit_tests PRIVATE InsightDock::Charts)
+find_package(Threads REQUIRED)
+target_link_libraries(insightdock_unit_tests PRIVATE InsightDock::Charts Threads::Threads)
+if(INSIGHTDOCK_FONT_LATIN)
+  target_compile_definitions(insightdock_unit_tests PRIVATE INSIGHTDOCK_FONT_LATIN=1)
+endif()
 
 add_test(NAME unit_tests COMMAND insightdock_unit_tests)
 set_tests_properties(unit_tests PROPERTIES WORKING_DIRECTORY ${CMAKE_BINARY_DIR})

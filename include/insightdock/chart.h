@@ -14,6 +14,7 @@
 #include "insightdock/image_buffer.h"
 #include "insightdock/theme.h"
 #include <cstddef>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -53,6 +54,11 @@ struct ChartOptions {
   Color text_color = Color::gray(60);                 ///< General label color.
   float font_size = 12.0f;                            ///< Base font size in pixels.
   bool show_grid = true; ///< Draw horizontal/vertical grid lines (Cartesian charts).
+  /**
+   * Font used for all text. `nullptr` (default) selects the embedded font. Load one with
+   * @ref load_font_data; the bytes are shared, so many charts can reuse one font cheaply.
+   */
+  FontDataPtr font;
 };
 
 /**
@@ -111,9 +117,21 @@ public:
    */
   virtual ImageBuffer render() const = 0;
 
+  /**
+   * @brief Deep copy of this chart, or `nullptr` if the concrete type doesn't support it.
+   *
+   * All built-in chart types override this. @ref ChartExporter uses it to render supersampled
+   * output from a scaled copy, so exporting never mutates the chart you pass in (and concurrent
+   * exports of one chart are safe). Custom subclasses should override it the same way:
+   * `return std::make_unique<MyChart>(*this);`. Without an override, supersampled export falls
+   * back to temporarily rewriting the chart's options, which is not thread-safe.
+   */
+  virtual std::unique_ptr<Chart> clone() const {
+    return nullptr;
+  }
+
 protected:
   ChartOptions options_;
-  mutable Font font_;
 };
 
 } // namespace insightdock::charts

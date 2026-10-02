@@ -17,6 +17,7 @@
 #endif
 
 #include <algorithm>
+#include <memory>
 #include <cctype>
 #include <fstream>
 #include <string>
@@ -135,15 +136,21 @@ bool render_size_ok(Chart const &chart, ExportOptions const &opts) {
   return ImageBuffer::dimensions_ok(o.width * ss, o.height * ss);
 }
 
-ImageBuffer render_mutable(Chart &chart, ExportOptions const &opts) {
+// Renders `chart` at the requested supersample factor. The caller's chart is never modified:
+// supersampling renders a scaled clone. (Custom subclasses without clone() fall back to
+// temporarily rewriting the original's options, which is not thread-safe.)
+ImageBuffer render_scaled(Chart const &chart, ExportOptions const &opts) {
   if (!render_size_ok(chart, opts))
     return ImageBuffer();
   int ss = std::clamp(opts.supersample, 1, kMaxSupersample);
-  SupersampleScope scope(chart, ss);
-  ImageBuffer img = chart.render();
-  if (ss > 1)
-    return ImageBuffer::downsample(img, ss);
-  return img;
+  if (ss <= 1)
+    return chart.render();
+
+  std::unique_ptr<Chart> copy = chart.clone();
+  Chart &target = copy ? *copy : const_cast<Chart &>(chart);
+  SupersampleScope scope(target, ss);
+  ImageBuffer img = target.render();
+  return ImageBuffer::downsample(img, ss);
 }
 
 #ifdef INSIGHTDOCK_HAS_PODOFO
@@ -329,15 +336,11 @@ OutputFormat format_from_path(std::string const &path) {
 }
 
 ImageBuffer ChartExporter::render(Chart &chart, ExportOptions const &opts) {
-  return render_mutable(chart, opts);
+  return render_scaled(chart, opts);
 }
 
 ImageBuffer ChartExporter::render(Chart const &chart, ExportOptions const &opts) {
-  if (!render_size_ok(chart, opts))
-    return ImageBuffer();
-  if (opts.supersample > 1)
-    return render_mutable(const_cast<Chart &>(chart), opts);
-  return chart.render();
+  return render_scaled(chart, opts);
 }
 
 ChartResult<void> ChartExporter::save(Chart &chart, std::string const &path, ExportOptions opts) {
@@ -370,7 +373,7 @@ ChartResult<void> ChartExporter::save(Chart &chart, std::string const &path, Exp
 
   if (!render_size_ok(chart, opts))
     return R::failure(ChartError::InvalidInput);
-  ImageBuffer img = render_mutable(chart, opts);
+  ImageBuffer img = render_scaled(chart, opts);
   if (img.width() == 0 || img.height() == 0)
     return R::failure(ChartError::RenderFailure);
 
@@ -397,7 +400,7 @@ ChartResult<std::vector<uint8_t>> ChartExporter::encode(Chart &chart, ExportOpti
 
   if (!render_size_ok(chart, opts))
     return R::failure(ChartError::InvalidInput);
-  ImageBuffer img = render_mutable(chart, opts);
+  ImageBuffer img = render_scaled(chart, opts);
   if (img.width() == 0 || img.height() == 0)
     return R::failure(ChartError::RenderFailure);
 
@@ -421,7 +424,7 @@ void ChartExporter::draw_pdf(PoDoFo::PdfDocument &doc, PoDoFo::PdfPainter &paint
     return;
   }
 
-  ImageBuffer img = render_mutable(const_cast<Chart &>(chart), opts);
+  ImageBuffer img = render_scaled(chart, opts);
   podofo::draw_chart(doc, painter, img, x, y, w, h);
 }
 

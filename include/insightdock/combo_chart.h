@@ -54,6 +54,10 @@ struct ComboLineOptions {
  */
 class ComboChart : public CartesianChart {
 public:
+  std::unique_ptr<Chart> clone() const override {
+    return std::make_unique<ComboChart>(*this);
+  }
+
   /** @brief Mutable line-series drawing options. */
   ComboLineOptions &line_options() {
     return line_opts_;

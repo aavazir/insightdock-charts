@@ -83,6 +83,10 @@ struct PieOptions {
  */
 class PieChart : public Chart {
 public:
+  std::unique_ptr<Chart> clone() const override {
+    return std::make_unique<PieChart>(*this);
+  }
+
   PieChart();
 
   /**

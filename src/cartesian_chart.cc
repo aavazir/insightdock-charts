@@ -137,7 +137,7 @@ void CartesianChart::draw_title(ImageBuffer &buf, Font &font) const {
 void CartesianChart::draw_axes_and_grid(PlotContext &ctx) const {
   auto &buf = ctx.buffer;
   Rect const &plot = ctx.plot;
-  Font font;
+  Font font(options_.font);
   font.set_size(ctx.opts.font_size);
 
   // Value-axis ticks — respect min_y_labels / max_y_labels
@@ -327,7 +327,7 @@ ImageBuffer CartesianChart::render() const {
   ImageBuffer buf(options_.width, options_.height);
   draw_background(buf);
 
-  Font font;
+  Font font(options_.font);
   font.set_size(options_.font_size);
   draw_title(buf, font);
 

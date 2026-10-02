@@ -13,6 +13,7 @@ option(INSIGHTDOCK_BUILD_EXAMPLES "Build generic example programs" ON)
 option(INSIGHTDOCK_WITH_PODOFO "Build PoDoFo PDF adapter and PDF examples" OFF)
 option(INSIGHTDOCK_BUILD_TESTS "Build and register CTest smoke tests" ON)
 option(INSIGHTDOCK_BUILD_BENCHMARKS "Build the std::chrono render benchmark harness" OFF)
+option(INSIGHTDOCK_FONT_LATIN "Embed a Latin-1/Latin-Extended-A font subset (~22 KB) instead of the ASCII-only one" OFF)
 option(INSIGHTDOCK_WERROR "Treat warnings as errors" OFF)
 
 set(INSIGHTDOCK_SOURCES
@@ -55,6 +56,10 @@ set_target_properties(InsightDockCharts PROPERTIES
 
 # pie_chart.cc is always in INSIGHTDOCK_SOURCES; tell export.cc it can use PieChart
 target_compile_definitions(InsightDockCharts PUBLIC INSIGHTDOCK_HAS_PIE=1)
+
+if(INSIGHTDOCK_FONT_LATIN)
+  target_compile_definitions(InsightDockCharts PRIVATE INSIGHTDOCK_FONT_LATIN=1)
+endif()
 
 target_include_directories(InsightDockCharts PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>

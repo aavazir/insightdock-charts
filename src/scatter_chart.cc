@@ -57,7 +57,7 @@ ImageBuffer ScatterChart::render() const {
   if (series_.empty())
     return buf;
 
-  Font font;
+  Font font(options_.font);
   font.set_size(options_.font_size);
 
   if (!options_.title.empty()) {
@@ -174,7 +174,7 @@ ImageBuffer ScatterChart::render() const {
 
   uint8_t fill_a = static_cast<uint8_t>(opts_.fill_opacity * 255.0f + 0.5f);
 
-  Font label_font;
+  Font label_font(options_.font);
   if (opts_.data_labels.enabled)
     label_font.set_size(opts_.data_labels.font_size);
 

@@ -77,6 +77,10 @@ struct ScatterOptions {
  */
 class ScatterChart : public Chart {
 public:
+  std::unique_ptr<Chart> clone() const override {
+    return std::make_unique<ScatterChart>(*this);
+  }
+
   /** @brief Mutable scatter options. */
   ScatterOptions &scatter_options() {
     return opts_;

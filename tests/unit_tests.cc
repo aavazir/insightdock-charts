@@ -13,9 +13,13 @@
 #include "insightdock/svg_writer.h"
 
 #include <cassert>
+#include <atomic>
 #include <cmath>
 #include <cstdio>
+#include <cstring>
 #include <limits>
+#include <thread>
+#include <vector>
 
 using namespace insightdock::charts;
 
@@ -1852,7 +1856,122 @@ static void test_fuzz_hostile_data_all_chart_types() {
   }
 }
 
+
+// ── Fonts: UTF-8 decoding, fallback glyph, injection ─────────────────────────────────────────
+
+static void test_font_utf8_missing_glyph_falls_back_to_question_mark() {
+  Font f; // neither embedded subset has CJK
+  f.set_size(14.0f);
+  CHECKF(f.measure_width("\xE4\xB8\xAD"), f.measure_width("?"), 1e-4); // one code point, not 2 bytes
+  CHECKF(f.measure_width("a\xE4\xB8\xAD"), f.measure_width("a?"), 1e-4);
+  // Malformed sequences must not hang or read past the end.
+  CHECK(f.measure_width("\xC3") > 0.0f);
+  CHECK(f.measure_width("\xFF\xFE\x80") > 0.0f);
+  CHECK(f.measure_width("\xE2\x82") > 0.0f);
+  ImageBuffer img(64, 24);
+  f.draw_text(img, 2, 18, "\xC3\xA9\xE2\x82\xAC\xF0\x9F\x98\x80", Color::black());
+  CHECK(any_ink(img));
+}
+
+static void test_font_measure_multiline_uses_widest_line() {
+  Font f;
+  CHECKF(f.measure_width("ab\nabcd\nx"), f.measure_width("abcd"), 1e-4);
+}
+
+static void test_font_data_validation() {
+  CHECK(load_font_data("/nonexistent/font.ttf") == nullptr);
+  CHECK(load_font_data(nullptr) == nullptr);
+  unsigned char junk[64] = {1, 2, 3};
+  CHECK(make_font_data(junk, sizeof(junk)) == nullptr);
+  CHECK(make_font_data(nullptr, 0) == nullptr);
+  Font f;
+  CHECK(!f.load_from_file("/nonexistent/font.ttf"));
+}
+
+static void test_chart_uses_injected_font() {
+  char const *kPath = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf";
+  auto data = load_font_data(kPath);
+  if (!data) {
+    std::fprintf(stderr, "skip: %s not available\n", kPath);
+    return;
+  }
+  Font full(data);
+  CHECK(full.is_loaded());
+  // The full font has 'α'; the embedded ASCII subset renders it as '?'.
+  CHECK(std::fabs(full.measure_width("\xCE\xB1") - full.measure_width("?")) > 0.01f);
+
+  BarChart a, b;
+  for (BarChart *c : {&a, &b}) {
+    c->options().title = "Caf\xCE\xB1 \xE2\x82\xAC";
+    c->set_categories({"\xCE\xB1", "b"});
+    c->add_series("s", {1, 2});
+  }
+  b.options().font = data;
+  ImageBuffer ia = a.render(), ib = b.render();
+  bool differ = false;
+  for (std::size_t y = 0; y < ia.height() && !differ; ++y)
+    for (std::size_t x = 0; x < ia.width(); ++x)
+      if (std::memcmp(ia.pixel(x, y), ib.pixel(x, y), 4) != 0) {
+        differ = true;
+        break;
+      }
+  CHECK(differ);
+  // A copy of the chart shares the font bytes.
+  BarChart c = b;
+  CHECK(c.options().font == data);
+}
+
+#ifdef INSIGHTDOCK_FONT_LATIN
+static void test_latin_embedded_font_has_accents() {
+  Font f;
+  CHECK(std::fabs(f.measure_width("\xC3\xA9") - f.measure_width("?")) > 0.01f);
+  CHECK(std::fabs(f.measure_width("\xE2\x82\xAC") - f.measure_width("?")) > 0.01f);
+}
+#endif
+
+
+static void test_supersampled_export_does_not_mutate_chart_and_is_thread_safe() {
+  LineChart line;
+  line.set_categories({"a", "b", "c"});
+  line.add_series("s", {1, 3, 2});
+  line.options().title = "T";
+  LineChart const &cline = line;
+  std::size_t w = cline.options().width;
+  float fs = cline.options().font_size;
+
+  ExportOptions eo;
+  eo.supersample = 2;
+  auto ref = ChartExporter::encode(line, eo);
+  CHECK(static_cast<bool>(ref));
+  CHECK(cline.options().width == w);
+  CHECKF(cline.options().font_size, fs, 1e-6);
+
+  std::atomic<int> bad{0};
+  std::vector<std::thread> threads;
+  for (int t = 0; t < 4; ++t) {
+    threads.emplace_back([&] {
+      for (int i = 0; i < 5; ++i) {
+        ImageBuffer img = ChartExporter::render(cline, eo);
+        if (img.width() != w || img.height() != cline.options().height)
+          ++bad;
+      }
+    });
+  }
+  for (auto &th : threads)
+    th.join();
+  CHECK(bad == 0);
+  CHECK(cline.options().width == w);
+}
+
 int main() {
+  test_supersampled_export_does_not_mutate_chart_and_is_thread_safe();
+#ifdef INSIGHTDOCK_FONT_LATIN
+  test_latin_embedded_font_has_accents();
+#endif
+  test_font_utf8_missing_glyph_falls_back_to_question_mark();
+  test_font_measure_multiline_uses_widest_line();
+  test_font_data_validation();
+  test_chart_uses_injected_font();
   test_fuzz_hostile_data_all_chart_types();
   test_hostile_values_all_cartesian_charts();
   test_hostile_scatter_and_pie();

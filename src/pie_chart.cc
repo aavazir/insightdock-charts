@@ -226,7 +226,7 @@ ImageBuffer PieChart::render() const {
   }
 
   if (pie_opts_.data_labels.enabled) {
-    Font dl_font;
+    Font dl_font(options_.font);
     auto const &dl = pie_opts_.data_labels;
     dl_font.set_size(dl.font_size);
     for (auto const &d : drawn) {
@@ -240,7 +240,7 @@ ImageBuffer PieChart::render() const {
     }
   }
 
-  Font font;
+  Font font(options_.font);
   font.set_size(pie_opts_.label_font_size);
 
   if (pie_opts_.show_labels) {

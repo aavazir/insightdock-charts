@@ -5,8 +5,8 @@
  * @file font.h
  * @brief TrueType text rasterization for chart labels and titles.
  *
- * By default uses a small embedded ASCII font. Load a full TTF via
- * @ref Font::load_from_file for Unicode labels.
+ * By default uses a small embedded font. Supply a full TTF via @ref load_font_data and
+ * `ChartOptions::font` for wider Unicode coverage; text is decoded as UTF-8.
  */
 
 #ifndef INSIGHTDOCK_CHARTS_FONT_H
@@ -15,6 +15,7 @@
 #include "insightdock/color.h"
 #include "insightdock/image_buffer.h"
 #include <cstddef>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -35,6 +36,21 @@ enum class TextBaseline {
   Alphabetic ///< Anchor at alphabetic baseline (default).
 };
 
+/** @brief Raw TTF file bytes. */
+using FontData = std::vector<unsigned char>;
+/** @brief Shared, immutable TTF bytes — cheap to copy into many charts and fonts. */
+using FontDataPtr = std::shared_ptr<FontData const>;
+
+/**
+ * @brief Read and validate a TTF from disk for use as @ref ChartOptions::font.
+ * @return Shared font bytes, or `nullptr` if the file is unreadable, too large (> 64 MiB) or
+ *         not a parseable TrueType font.
+ */
+FontDataPtr load_font_data(char const *path);
+
+/** @brief Copy and validate in-memory TTF bytes; `nullptr` if not a parseable TrueType font. */
+FontDataPtr make_font_data(unsigned char const *data, std::size_t size);
+
 /**
  * @brief TrueType font rasterizer (stb_truetype backend).
  *
@@ -46,6 +62,11 @@ public:
   Font();
   /** @brief Construct from in-memory TTF bytes. */
   explicit Font(std::vector<unsigned char> ttf_data);
+  /**
+   * @brief Construct from shared TTF bytes without copying them.
+   * @param data Font bytes from @ref load_font_data; `nullptr` selects the embedded font.
+   */
+  explicit Font(FontDataPtr data);
   ~Font();
   Font(Font const &) = delete;
   Font &operator=(Font const &) = delete;
@@ -82,7 +103,7 @@ public:
    * @param buffer   Target RGBA buffer.
    * @param x        Anchor X in pixels.
    * @param y        Anchor Y in pixels.
-   * @param text     UTF-8 string (ASCII subset unless full TTF loaded).
+   * @param text     UTF-8 string. Code points the font lacks are drawn as `?`.
    * @param color    Text color (alpha blended).
    * @param align    Horizontal alignment.
    * @param baseline Vertical alignment.
@@ -91,7 +112,7 @@ public:
                  TextAlign align = TextAlign::Left,
                  TextBaseline baseline = TextBaseline::Alphabetic) const;
 
-  /** @brief Measure text width in pixels at current font size. */
+  /** @brief Measure text width in pixels at current font size (widest line if `\n` present). */
   float measure_width(std::string const &text) const;
 
   /**
@@ -131,10 +152,11 @@ public:
 private:
   bool init_font();
   float baseline_offset(TextBaseline baseline) const;
+  int resolve_glyph(int codepoint) const;
   void blit_rotated(ImageBuffer &buffer, float cx, float cy, std::string const &text,
                     Color const &color, bool clockwise) const;
 
-  std::vector<unsigned char> ttf_data_;
+  FontDataPtr ttf_;
   float pixel_size_ = 14.0f;
   bool loaded_ = false;
 

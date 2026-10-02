@@ -43,6 +43,10 @@ struct LineChartOptions {
  */
 class LineChart : public CartesianChart {
 public:
+  std::unique_ptr<Chart> clone() const override {
+    return std::make_unique<LineChart>(*this);
+  }
+
   /** @brief Mutable line drawing options. */
   LineChartOptions &line_options() {
     return line_opts_;
