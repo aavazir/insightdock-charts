@@ -1,0 +1,9 @@
+cff-version: 1.2.0
+message: "If you use InsightDock Charts in your work, please cite it as below."
+title: "InsightDock Charts for C++"
+type: software
+license: MIT
+repository-code: "https://github.com/aavazir/insightdock-charts"
+url: "https://aavazir.github.io/insightdock-charts/"
+authors:
+  - name: "InsightDock contributors"

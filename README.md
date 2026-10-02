@@ -1,21 +1,41 @@
-# InsightDock Charts for C++
+<h1 align="center">InsightDock Charts for C++</h1>
 
-[![CI](https://github.com/aavazir/insightdock-charts/actions/workflows/ci.yml/badge.svg)](https://github.com/aavazir/insightdock-charts/actions/workflows/ci.yml)
+<p align="center">
+  <b>Native C++17 charts for reports and embedded devices.</b><br>
+  PNG, JPEG, and native vector SVG and PDF from one call. MIT-licensed, no GUI toolkit, no Python.
+</p>
 
-> InsightDock is an MIT-licensed C++ charting engine for developers who need high-quality charts in reports and applications, with vector PDF output and an extensible architecture from day one.
+<p align="center">
+  <a href="https://github.com/aavazir/insightdock-charts/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/aavazir/insightdock-charts/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://aavazir.github.io/insightdock-charts/"><img alt="Docs" src="https://img.shields.io/badge/docs-aavazir.github.io-blue"></a>
+  <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-green"></a>
+  <img alt="C++17" src="https://img.shields.io/badge/C%2B%2B-17-00599C">
+  <img alt="Platforms" src="https://img.shields.io/badge/platforms-Linux%20%7C%20macOS%20%7C%20Windows%20%7C%20OpenWrt-lightgrey">
+</p>
 
-Production-oriented C++17 charting for PDF reports, PNG/JPEG export, and embedded devices. Designed for easy extension (new chart types plug into shared bases) and OpenWrt cross-compilation (gcc 10+, zero link-time dependencies in the core).
+<p align="center">
+  <a href="https://aavazir.github.io/insightdock-charts/">Documentation</a> ·
+  <a href="https://aavazir.github.io/insightdock-charts/getting-started/">Getting started</a> ·
+  <a href="https://aavazir.github.io/insightdock-charts/examples/">Examples</a> ·
+  <a href="docs/COMPARISON.md">Comparison</a> ·
+  <a href="CHANGELOG.md">Changelog</a>
+</p>
 
-## Features
+<p align="center">
+  <img alt="Grouped bar, line and pie charts rendered by InsightDock" src="docs/gallery/bar_grouped.png" width="32%">
+  <img alt="Line chart with area fill" src="docs/gallery/line_chart.png" width="32%">
+  <img alt="Pie chart" src="docs/gallery/pie_chart.png" width="32%">
+</p>
 
-- **Chart types:** pie/doughnut, bar (grouped, stacked or 100%-stacked, vertical or horizontal), multi-series line (optional area fill, step lines), area (stacked or 100%), combo (bar + line, dual axis), scatter and bubble, histogram
-- **Axes:** linear, logarithmic (Bar/Line/Area/Combo y-axis), and continuous DateTime x-axis positioned by real timestamp (Line/Area)
-- **Easy export:** one API — `ChartExporter::save(chart, "output.png")` for PNG, JPEG, SVG, and PDF
-- **Output:** RGBA `ImageBuffer`, PNG/JPEG, SVG and PDF as native **vector** output for pie, bar, line, area and combo (selectable text, crisp at any zoom; scatter embeds a raster) or as a raster embed for every chart type
-- **Styling:** Chart.js 12-color, Tableau-10 and colorblind-safe palettes; per-series dash, marker, width and opacity; gap handling for missing values; reference lines; multi-line titles
-- **Text:** UTF-8 labels; embedded ASCII font (~20 KB) or an optional Latin-1/Latin-Ext font (`INSIGHTDOCK_FONT_LATIN`); bring any TTF via `ChartOptions::font`
-- **Core deps:** C++17 stdlib only (stb headers compiled into the library)
-- **Optional PDF:** PoDoFo adapter via `insightdock/pdf/podofo.h`
+## Why InsightDock
+
+- **Reports and servers, not GUIs.** Render from a daemon, CLI tool, container or router. No window, no Qt, no Python, no Gnuplot.
+- **Real vector output.** SVG and PDF contain native paths and selectable text for pie, bar, line, area and combo charts, so they stay sharp at any zoom or print size.
+- **Small and portable.** The core needs only the C++17 standard library; stb headers are vendored. A Make build for OpenWrt lets you drop chart types, JPEG and the embedded font.
+- **Deterministic.** The same data gives the same chart on every machine, using an embedded font.
+- **MIT.** No license keys, no copyleft.
+
+InsightDock is static output only. For interactive zoom and pan use QCustomPlot, ImPlot or Qt Charts. See the [honest comparison](docs/COMPARISON.md).
 
 ## Quick start
 
@@ -24,38 +44,55 @@ Production-oriented C++17 charting for PDF reports, PNG/JPEG export, and embedde
 
 using namespace insightdock::charts;
 
-PieChart pie;
-pie.add_slice("Online", 72);
-pie.add_slice("Offline", 28);
-ChartExporter::save(pie, "status.png");
+BarChart bar;
+bar.options().title = "Quarterly Revenue";
+bar.set_categories({"Q1", "Q2", "Q3", "Q4"});
+bar.add_series("Revenue", {100, 120, 90, 140});
+bar.add_series("Cost", {60, 70, 65, 80});
+
+ChartExporter::save(bar, "revenue.png");   // format inferred from the extension
 ```
+
+Native vector output:
 
 ```cpp
-#include "insightdock/charts.h"
-#include "insightdock/pdf/podofo.h"
-
 ExportOptions opts;
-opts.pdf_backend = PdfBackend::Vector;
-ChartExporter::save(pie, "status.pdf", opts);  // requires INSIGHTDOCK_WITH_PODOFO
+opts.svg_backend = SvgBackend::Vector;     // SVG: no dependencies
+opts.pdf_backend = PdfBackend::Vector;     // PDF: needs INSIGHTDOCK_WITH_PODOFO
+ChartExporter::save(bar, "revenue.svg", opts);
+ChartExporter::save(bar, "revenue.pdf", opts);
 ```
 
-See [examples/](examples/) for bar, line, and PDF samples.
+Link it from CMake:
+
+```cmake
+find_package(InsightDock CONFIG REQUIRED)
+target_link_libraries(myapp PRIVATE InsightDock::Charts)
+```
+
+See [examples/](examples/) for pie, bar, line, combo, scatter, log-scale, time-series and PDF report samples.
+
+## Features
+
+- **Charts:** pie/doughnut, bar (grouped, stacked, 100%-stacked, horizontal), line (area fill, step, spline), area (stacked, 100%), combo with a second y-axis, scatter/bubble, histogram
+- **Axes:** linear, logarithmic, and a date/time x-axis positioned by real timestamp
+- **Styling:** three palettes (Chart.js, Tableau-10, colorblind-safe), per-series dash, marker, width and opacity, reference lines, gap handling for missing values, multi-line titles
+- **Text:** UTF-8; embedded ASCII font, optional Latin-1/Latin-Ext font, or any TTF via `ChartOptions::font`
+- **Output:** PNG, JPEG, SVG, PDF and a raw RGBA `ImageBuffer`; multi-page PDF report builder (PoDoFo)
+- **Robust:** non-finite and hostile input is handled without hangs; CI runs ASan/UBSan, and unit tests feed NaN, Inf and oversized input to every chart type
+- **Thread-safe export:** concurrent `render()`/`save()` on a const chart is supported
 
 ## Gallery
 
-| Pie | Bar (grouped) | Bar (stacked) |
+| Pie | Bar (stacked) | Area (stacked) |
 |---|---|---|
-| ![pie](docs/gallery/pie_chart.png) | ![bar grouped](docs/gallery/bar_grouped.png) | ![bar stacked](docs/gallery/bar_stacked.png) |
+| ![pie](docs/gallery/pie_chart.png) | ![bar stacked](docs/gallery/bar_stacked.png) | ![area stacked](docs/gallery/area_stacked.png) |
 
-| Line | Area (stacked) |
+| Combo (bar + line, dual axis) | Vector PDF vs Matplotlib |
 |---|---|
-| ![line](docs/gallery/line_chart.png) | ![area stacked](docs/gallery/area_stacked.png) |
+| ![combo](docs/gallery/combo_chart.png) | ![vector comparison](docs/gallery/vector_vs_matplotlib.png) |
 
-| Combo (bar + line, dual axis) |
-|---|
-| ![combo](docs/gallery/combo_chart.png) |
-
-More samples, including PDF report pages, in [docs/gallery/](docs/gallery/).
+More in [docs/gallery/](docs/gallery/).
 
 ## Project layout
 
@@ -194,50 +231,15 @@ library actually ends up — `configure_file()` bakes `CMAKE_INSTALL_PREFIX` at 
 | macOS | CMake (CI) | Optional |
 | Windows | CMake + MSVC (CI; static and DLL) | Optional |
 
-## How it compares
-
-InsightDock is for **native C++, headless report output** (PNG, JPEG, SVG, PDF) under an MIT license. It is not an interactive plotting toolkit. For zoom/pan in a desktop app use QCustomPlot, ImPlot or Qt Charts; for scientific plotting use Matplot++ or PLplot; for the widest chart catalogue use ChartDirector.
-
-| | InsightDock | QCustomPlot | Matplot++ | ImPlot |
-|---|---|---|---|---|
-| License | MIT | GPL-3 / commercial | MIT | MIT |
-| Needs | C++17 only | Qt | Gnuplot at runtime | Dear ImGui |
-| Interactive | No | Yes | Limited | Yes |
-| Vector PDF / SVG | Yes, pie/bar/line/area/combo | PDF | Yes | No |
-| Embedded / OpenWrt | Yes | No | No | No |
-
-Full comparison, including limits: [docs/COMPARISON.md](docs/COMPARISON.md).
-
-Contributions for new chart types are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).
-
-## Measurement criteria
-
-Track progress objectively (see [docs/BENCHMARKS.md](docs/BENCHMARKS.md)):
-
-- Chart and export coverage
-- Render quality (labels, legends, deterministic output)
-- Performance at 1k / 10k / 100k points
-- API simplicity (lines of code for common tasks)
-- Portability (OpenWrt, Linux, Windows feasibility)
-
 ## Documentation
 
-The MkDocs Material site (`mkdocs.yml` + `docs-site/`, built via the `docs` GitHub Actions
-workflow — see [docs/DOCUMENTATION.md](docs/DOCUMENTATION.md)) is the full documentation set:
-Getting started, Concepts (architecture, extension points), Guides (usage, PDF reports,
-troubleshooting), one page per chart type with every option, Examples, API Reference, Comparison,
-and Changelog. The GitHub-readable sources for that site live under `docs/` and `docs-site/`:
+The full documentation is at **https://aavazir.github.io/insightdock-charts/**: getting started, concepts, guides (usage, vector export, PDF reports, fonts, thread safety and ABI, troubleshooting), one page per chart type, examples, the generated API reference, a comparison and the changelog.
 
-- [examples/README.md](examples/README.md) — run generic examples
-- [docs/DOCUMENTATION.md](docs/DOCUMENTATION.md) — doc stack; how to build the MkDocs Material site with the MrDocs API reference embedded
-- [docs/API.md](docs/API.md) — usage guide (error handling, theming, tick formatting, extending); published as the site's Usage guide page
-- [docs-site/concepts.md](docs-site/concepts.md) — class hierarchy, render pipeline, how to add a new chart type
-- [docs-site/chart-types/](docs-site/chart-types/) — per-chart-type option reference (pie, bar, line, area, combo, scatter/bubble)
-- [docs-site/guides/pdf-reports.md](docs-site/guides/pdf-reports.md) — `PdfReportBuilder` walkthrough
-- [docs-site/guides/troubleshooting.md](docs-site/guides/troubleshooting.md) — real incidents: ABI/install hazards, clangd setup, cross-compile issues
-- [docs/RELEASE.md](docs/RELEASE.md) — versioning and release checklist
-- [docs/gallery/](docs/gallery/) — generated sample outputs
-- [docs/COMPARISON.md](docs/COMPARISON.md) — proprietary and open-source comparison (website source)
+In the repository: [docs/API.md](docs/API.md) (usage guide), [docs/BENCHMARKS.md](docs/BENCHMARKS.md), [docs/RELEASE.md](docs/RELEASE.md), [ROADMAP.md](ROADMAP.md).
+
+## Contributing
+
+Bug reports, feature requests and new chart types are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) first; this project follows a [Code of Conduct](CODE_OF_CONDUCT.md). Report security issues privately as described in [SECURITY.md](SECURITY.md).
 
 ## License
 

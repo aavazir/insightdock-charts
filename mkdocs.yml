@@ -33,6 +33,7 @@ theme:
     - search.suggest
 
 markdown_extensions:
+  - attr_list
   - admonition
   - tables
   - toc:
