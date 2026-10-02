@@ -40,7 +40,7 @@ void draw_band(CartesianChart::PlotContext const &ctx, ReferenceBand const &band
     Color text_color = band.color;
     text_color.a = 255;
     ctx.target.draw_text(ctx.font, pts[0].first + 4.0f, pts[0].second + 4.0f, band.label,
-                       text_color, TextAlign::Left, TextBaseline::Top);
+                         text_color, TextAlign::Left, TextBaseline::Top);
   }
 }
 
@@ -56,7 +56,7 @@ void draw_line(CartesianChart::PlotContext const &ctx, ReferenceLine const &line
                                 line.dash);
     if (!line.label.empty()) {
       ctx.target.draw_text(ctx.font, plot.right() - 4.0f, py - 4.0f, line.label, line.color,
-                         TextAlign::Right, TextBaseline::Bottom);
+                           TextAlign::Right, TextBaseline::Bottom);
     }
   } else {
     float px = ctx.x_scale.to_pixel(line.value);
@@ -66,7 +66,7 @@ void draw_line(CartesianChart::PlotContext const &ctx, ReferenceLine const &line
                                 line.dash);
     if (!line.label.empty()) {
       ctx.target.draw_text(ctx.font, px + 4.0f, plot.top() + 4.0f, line.label, line.color,
-                         TextAlign::Left, TextBaseline::Top);
+                           TextAlign::Left, TextBaseline::Top);
     }
   }
 }

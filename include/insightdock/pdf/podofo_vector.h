@@ -3,7 +3,7 @@
 
 /**
  * @file podofo_vector.h
- * @brief Native vector PDF pie charts (paths, leader lines, labels).
+ * @brief Native vector PDF charts (pie, bar, line, area, combo).
  *
  * Renders sharp, zoomable pie charts directly with PoDoFo drawing primitives.
  * Used by @ref ChartExporter when @ref PdfBackend::Vector is selected, and by
@@ -13,6 +13,7 @@
 #ifndef INSIGHTDOCK_PDF_PODOFO_VECTOR_H
 #define INSIGHTDOCK_PDF_PODOFO_VECTOR_H
 
+#include "insightdock/color.h"
 #include "insightdock/export_macros.h"
 #include "insightdock/palette.h"
 #include <string>
@@ -59,6 +60,8 @@ struct PieVectorOptions {
   PaletteKind palette = PaletteKind::Tableau10; ///< Slice fill colors.
   double fill_opacity = 0.6;                    ///< Slice fill alpha (0–1).
   double radius_fraction = 0.26;                ///< Pie radius as fraction of min(box w,h).
+  double inner_radius_ratio = 0.0;              ///< Doughnut cutout as a fraction of the radius.
+  Color hole_color = Color::rgb(255, 255, 255); ///< Fill for the doughnut cutout (the page color).
 
   float label_font_pt = 7.0f;   ///< Label font size in points.
   float pct_font_pt = 6.5f;     ///< Percentage line font size.
@@ -108,8 +111,8 @@ INSIGHTDOCK_API void draw_pie_slices(PoDoFo::PdfDocument &doc, PoDoFo::PdfPainte
 /**
  * @brief Draw any @ref Chart using vectors when supported, else raster embed.
  *
- * Pie charts use vector paths; bar and line charts fall back to PNG embed via
- * @ref draw_chart.
+ * Pie charts use their dedicated vector pipeline; bar, line, area and combo charts draw natively
+ * through @ref PdfTarget. Other chart types (scatter) fall back to PNG embed via @ref draw_chart.
  */
 INSIGHTDOCK_API void draw_chart_vector(PoDoFo::PdfDocument &doc, PoDoFo::PdfPainter &painter,
                                        Chart const &chart, double x, double y, double w, double h,

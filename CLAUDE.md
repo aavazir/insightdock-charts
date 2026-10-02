@@ -73,7 +73,7 @@ cd docs && mrdocs mrdocs.yml && cd ..      # generate the API reference first
 ### Class hierarchy
 ```
 Chart (abstract)
-├── PieChart          — pie slices, Tableau-10/Chart.js palette, raster + vector PDF + native vector SVG
+├── PieChart          — pie slices, Tableau-10/Chart.js palette, raster + vector PDF + native vector SVG (own pipeline)
 ├── ScatterChart      — scatter/bubble; continuous numeric x/y Scales, not CartesianChart's category axis
 └── CartesianChart (abstract) — shared axes, grid, legend, title rendering
     ├── BarChart      — grouped or stacked vertical bars
@@ -86,15 +86,16 @@ Chart (abstract)
 
 ### Key types
 - **`ImageBuffer`** (`include/insightdock/image_buffer.h`, `src/image_buffer.cc`) — RGBA raster buffer with drawing primitives (lines, polylines, polygons, sectors, circles, `fill_rect`). All chart rendering writes here. `downsample()` implements supersampling AA.
-- **`ChartExporter`** (`include/insightdock/export.h`, `src/export.cc`) — static-only export API. `format_from_path()` infers format from extension. PDF methods are guarded by `#ifdef INSIGHTDOCK_HAS_PODOFO`. `ExportOptions::svg_backend = SvgBackend::Vector` dispatches to `src/svg_pie.cc` for `PieChart` (native `<path>`/`<text>`, guarded by `INSIGHTDOCK_HAS_PIE`); other chart types raster-fall back, same `Raster`/`Vector` shape as `PdfBackend`.
-- **`CartesianChart`** (`include/insightdock/cartesian_chart.h`, `src/cartesian_chart.cc`) — handles background, title, axes, grid, and legend; calls `draw_series(PlotContext&)` for the concrete geometry.
+- **`ChartExporter`** (`include/insightdock/export.h`, `src/export.cc`) — static-only export API. `format_from_path()` infers format from extension. PDF methods are guarded by `#ifdef INSIGHTDOCK_HAS_PODOFO`. `ExportOptions::svg_backend = SvgBackend::Vector` dispatches to `src/svg_pie.cc` for `PieChart` and to `SvgTarget` (`src/svg_target.cc`) for Cartesian charts (native shapes + `<text>`); scatter raster-falls back, same `Raster`/`Vector` shape as `PdfBackend`.
+- **`DrawTarget`** (`include/insightdock/draw_target.h`) — pixel-space drawing interface Cartesian charts render into via `Chart::draw(DrawTarget&)`: `RasterTarget` (wraps `ImageBuffer`, byte-identical PNGs), `SvgTarget` (`detail/svg_target.h`), `PdfTarget` (`pdf/podofo_target.h`). Text is always *measured* with the embedded `Font` so layout is the same on every target.
+- **`CartesianChart`** (`include/insightdock/cartesian_chart.h`, `src/cartesian_chart.cc`) — handles background, title, axes, grid, and legend; calls `draw_series(PlotContext&)` for the concrete geometry (`PlotContext::target` is a `DrawTarget&`).
 - **`Scale`** (`include/insightdock/scale.h`, `src/scale.cc`) — linear mapping between data values and pixel coordinates; used by `CartesianChart` for both axes.
 - **`Font`** (`include/insightdock/font.h`, `src/font.cc`) — embedded ASCII-subset TTF (~20 KB) compiled in via `include/insightdock/embedded_font.h`; text is decoded as UTF-8 (missing glyphs draw as `?`); inject a full TTF with `ChartOptions::font = load_font_data(path)`; `INSIGHTDOCK_FONT_LATIN` / `FONT_MODE=embedded-latin` swaps in `embedded_font_latin.h`.
 - **`Palette`** (`include/insightdock/palette.h`, `src/palette.cc`) — `PaletteKind::ChartJs12` (bar/line default) and `PaletteKind::Tableau10` (pie default).
 
 ### PDF layer (optional)
 `src/podofo_adapter.cc` — raster embed: renders chart to PNG bytes and injects into a PoDoFo page.  
-`src/podofo_vector.cc` — vector embed: walks `PieChart::slices()` and draws native PDF path commands; bar/line fall back to raster.  
+`src/podofo_vector.cc` — vector embed: `PieChart` uses its own pipeline (`draw_pie_impl`); Cartesian charts draw through `PdfTarget` (`src/podofo_target.cc`), a `DrawTarget` that emits native PDF paths/text; scatter falls back to raster.  
 Both compiled only when `INSIGHTDOCK_WITH_PODOFO=ON`; guarded by `INSIGHTDOCK_HAS_PODOFO` macro.
 
 ### Third-party

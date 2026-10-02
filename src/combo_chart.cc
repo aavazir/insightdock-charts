@@ -164,7 +164,7 @@ void ComboChart::draw_series(PlotContext &ctx) const {
         auto const &dl = bar_opts_.data_labels;
         std::string text = detail::format_label_value(val, dl.format, dl.decimals);
         ctx.target.draw_text(bar_label_font, bx + bar_w * 0.5f, by_top - 4.0f, text, dl.color,
-                                 TextAlign::Center, TextBaseline::Bottom);
+                             TextAlign::Center, TextBaseline::Bottom);
       }
     }
     ++bar_idx;
@@ -220,8 +220,8 @@ void ComboChart::draw_overlay(PlotContext &ctx) const {
             val = 0.0;
           std::string text = detail::format_label_value(val, dl.format, dl.decimals);
           ctx.target.draw_text(line_label_font, run.pts[k].first,
-                                    run.pts[k].second - line_opts_.point_radius - 4.0f, text,
-                                    dl.color, TextAlign::Center, TextBaseline::Bottom);
+                               run.pts[k].second - line_opts_.point_radius - 4.0f, text, dl.color,
+                               TextAlign::Center, TextBaseline::Bottom);
         }
       }
     }

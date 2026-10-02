@@ -36,8 +36,8 @@ public:
                             Color const &color) override;
   void draw_dashed_line(float x0, float y0, float x1, float y1, float width, Color const &color,
                         std::vector<float> const &dash) override;
-  void draw_dashed_polyline(Point const *points, std::size_t count, float width,
-                            Color const &color, std::vector<float> const &dash) override;
+  void draw_dashed_polyline(Point const *points, std::size_t count, float width, Color const &color,
+                            std::vector<float> const &dash) override;
   void draw_text(Font const &font, float x, float y, std::string const &text, Color const &color,
                  TextAlign align, TextBaseline baseline) override;
   void draw_text_rotated_ccw(Font const &font, float cx, float cy, std::string const &text,

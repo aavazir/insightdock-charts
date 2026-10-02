@@ -3,9 +3,9 @@
 
 #include "insightdock/export.h"
 
+#include "insightdock/detail/svg_target.h"
 #ifdef INSIGHTDOCK_HAS_PIE
 #include "insightdock/detail/svg_pie.h"
-#include "insightdock/detail/svg_target.h"
 #include "insightdock/pie_chart.h"
 #endif
 #include "insightdock/png_writer.h"

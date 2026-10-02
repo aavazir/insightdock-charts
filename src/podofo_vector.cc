@@ -6,6 +6,7 @@
 
 #include "insightdock/color.h"
 #include "insightdock/pdf/podofo_adapter.h"
+#include "insightdock/pdf/podofo_target.h"
 #include "insightdock/pie_chart.h"
 
 #include <podofo/podofo.h>
@@ -332,6 +333,14 @@ void draw_pie_impl(PoDoFo::PdfDocument &doc, PoDoFo::PdfPainter &painter,
     cum += s.frac;
   }
 
+  if (opts.inner_radius_ratio > 0.0) {
+    PoDoFo::PdfPainterPath hole;
+    hole.AddCircle(cx, cy, radius * std::min(opts.inner_radius_ratio, 0.999));
+    painter.GraphicsState.SetNonStrokingColor(
+        to_pdf_color(opts.hole_color.r, opts.hole_color.g, opts.hole_color.b));
+    painter.DrawPath(hole, PoDoFo::PdfPathDrawMode::Fill);
+  }
+
   if (use_legend) {
     draw_internal_legend(painter, font, slices, opts, x, y, w);
     return;
@@ -518,6 +527,8 @@ void draw_pie(PoDoFo::PdfDocument &doc, PoDoFo::PdfPainter &painter, PieChart co
   opts.fill_opacity = po.fill_opacity;
   opts.label_font_pt = po.label_font_size;
   opts.stroke_width_pt = po.stroke_width;
+  opts.inner_radius_ratio = po.inner_radius_ratio;
+  opts.hole_color = chart.options().background;
 
   std::vector<std::pair<std::string, double>> raw;
   for (auto const &s : chart.slices())
@@ -532,6 +543,16 @@ void draw_chart_vector(PoDoFo::PdfDocument &doc, PoDoFo::PdfPainter &painter, Ch
   if (auto const *pie = dynamic_cast<PieChart const *>(&chart)) {
     draw_pie(doc, painter, *pie, x, y, w, h, pie_opts, fonts);
     return;
+  }
+
+  {
+    // Cartesian charts (bar/line/area/combo) draw natively into the PDF; the target saves and
+    // restores the painter state around the chart.
+    auto const &o = chart.options();
+    PdfTarget target(doc, painter, static_cast<float>(o.width), static_cast<float>(o.height), x, y,
+                     w, h, fonts.regular);
+    if (chart.draw(target))
+      return;
   }
 
   ImageBuffer img = chart.render();

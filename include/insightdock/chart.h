@@ -10,8 +10,8 @@
 #define INSIGHTDOCK_CHARTS_CHART_H
 
 #include "insightdock/color.h"
-#include "insightdock/export_macros.h"
 #include "insightdock/draw_target.h"
+#include "insightdock/export_macros.h"
 #include "insightdock/font.h"
 #include "insightdock/image_buffer.h"
 #include "insightdock/series_style.h"

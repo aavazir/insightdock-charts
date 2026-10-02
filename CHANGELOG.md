@@ -6,6 +6,19 @@ Format based on [Keep a Changelog](https://keepachangelog.com/). Versioning foll
 
 ## [Unreleased]
 
+### Phase C — native vector output
+- **Native vector SVG and PDF for bar, line, area and combo charts** (grouped/stacked/horizontal bars, splines, per-series dash and markers, translucent fills, data labels, reference lines/bands, secondary axis, rotated axis titles, legend). `ExportOptions::svg_backend = SvgBackend::Vector` and `pdf_backend = PdfBackend::Vector` now apply to every Cartesian chart; only scatter still embeds a raster. Selectable text, scales to any size. New guide: *Vector export*.
+- **`DrawTarget`** (`include/insightdock/draw_target.h`) — pixel-space drawing interface that Cartesian charts render through, with `RasterTarget` (PNG/JPEG; gallery output is byte-identical), `detail::SvgTarget` and `podofo::PdfTarget`. `Chart::draw(DrawTarget&)` is a new virtual (default returns `false`; all Cartesian charts implement it).
+- **Doughnut cutout in vector pie output** — SVG and PDF pies now honour `PieOptions::inner_radius_ratio` (hole painted in the background color, as the raster path does). `PieVectorOptions` gains `inner_radius_ratio` and `hole_color`.
+- `Font::baseline_offset()` and `Font::ascent()` are now public so non-raster targets place text exactly where the raster path does.
+
+### Changed (API, pre-1.0)
+- `CartesianChart::PlotContext::buffer` (`ImageBuffer&`) is now `target` (`DrawTarget&`); `detail::fill_bar` / `detail::draw_marker` take a `DrawTarget&`; `compute_plot_rect` takes `(width, height, font)`. Custom `CartesianChart` subclasses draw with `ctx.target.draw_text(font, ...)` instead of `font.draw_text(ctx.buffer, ...)`.
+
+### Fixed
+- **Stacked `AreaChart` clipped its top series** — the y-axis was sized from the tallest single series instead of the per-category total (`BarChart` already did this). The `area_stacked` gallery baseline was regenerated.
+
+
 ### Added
 
 - **Per-series styling and missing-data handling (Phase B of the v1.0 plan).**

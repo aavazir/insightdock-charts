@@ -49,6 +49,7 @@ nav:
   - Concepts: concepts.md
   - Guides:
       - Usage guide: guides/usage.md
+      - Vector export (SVG and PDF): guides/vector-export.md
       - PDF reports: guides/pdf-reports.md
       - Fonts and text: guides/fonts-and-text.md
       - Thread safety and ABI: guides/thread-safety-and-abi.md

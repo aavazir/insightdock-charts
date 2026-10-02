@@ -11,7 +11,7 @@ Production-oriented C++17 charting for PDF reports, PNG/JPEG export, and embedde
 - **Chart types:** pie, bar (grouped / stacked, vertical or horizontal), multi-series line (optional area fill), area (stacked), combo (bar + line), scatter and bubble
 - **Axes:** linear, logarithmic (Bar/Line/Area/Combo y-axis), and continuous DateTime x-axis positioned by real timestamp (Line/Area)
 - **Easy export:** one API — `ChartExporter::save(chart, "output.png")` for PNG, JPEG, SVG, and PDF
-- **Output:** RGBA `ImageBuffer`, PNG/JPEG, SVG (raster embed everywhere; native **vector paths for pie**), PDF raster embed, native **vector PDF pies**
+- **Output:** RGBA `ImageBuffer`, PNG/JPEG, SVG and PDF as native **vector** output for pie, bar, line, area and combo (selectable text, crisp at any zoom; scatter embeds a raster) or as a raster embed for every chart type
 - **Styling:** Chart.js / AmCharts 12-color palette, Tableau-10 palette (pie), axes, grid, legend, title
 - **Text:** UTF-8 labels; embedded ASCII font (~20 KB) or an optional Latin-1/Latin-Ext font (`INSIGHTDOCK_FONT_LATIN`); bring any TTF via `ChartOptions::font`
 - **Core deps:** C++17 stdlib only (stb headers compiled into the library)
@@ -204,7 +204,7 @@ InsightDock does not claim immediate parity with every alternative. It targets d
 | | ChartDirector | StockChartX | InsightDock (now) |
 |---|---------------|-------------|-------------------|
 | Breadth of chart types | Very broad | Finance-focused | Pie, bar, line, area, combo, scatter/bubble |
-| Report/PDF output | Strong | Strong | PNG/JPEG + PDF raster/vector pie |
+| Report/PDF output | Strong | Strong | PNG/JPEG, native vector SVG/PDF (pie, bar, line, area, combo) |
 | License | Commercial | Commercial | MIT |
 | Embedded/server | Possible | Desktop/server | Core designed for headless/embedded |
 | Extensibility | Closed | Closed | Open C++ architecture from day one |
@@ -216,7 +216,7 @@ InsightDock does not claim immediate parity with every alternative. It targets d
 | Headless / server reports | GUI-oriented | Varies (Python for matplotlib-cpp) | Core design goal |
 | License | MIT / GPL+commercial | LGPL / MIT+Python stack | MIT |
 | Embedded / OpenWrt | Heavy or impractical | Often impractical | Makefile core, STL-only |
-| PDF vector reports | Not first-class | Possible (device-dependent) | Vector pies + raster embed |
+| PDF vector reports | Not first-class | Possible (device-dependent) | Native vector charts + raster embed |
 | API simplicity | Framework-specific | Scientific / script idioms | `ChartExporter::save` in few lines |
 
 **Roadmap:** core chart types first, then breadth (ChartDirector gaps) and finance depth (StockChartX gaps). Open-source gaps (SVG, interactivity, chart count) tracked in [ROADMAP.md](ROADMAP.md) and [docs/COMPARISON.md](docs/COMPARISON.md).

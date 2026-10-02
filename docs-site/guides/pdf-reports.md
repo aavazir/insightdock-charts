@@ -71,8 +71,9 @@ builder.draw_chart_flow(pdf::PdfPageLayout::margin_l_mm, builder.content_width_m
                         bar, "Quarterly Sales by Year", raster_opts);
 ```
 
-`ExportOptions::pdf_backend` still applies here — pass `PdfBackend::Vector` for pie charts to get
-native vector paths instead of a rasterized-and-embedded PNG:
+`ExportOptions::pdf_backend` still applies here — pass `PdfBackend::Vector` for pie, bar, line, area
+and combo charts to get native vector paths and selectable text instead of a rasterized-and-embedded
+PNG (see [Vector export](vector-export.md)):
 
 ```cpp
 ExportOptions vector_opts;
@@ -141,8 +142,8 @@ raster_opts.supersample = 2;
 ChartExporter::draw_pdf(doc, painter, bar, /*x=*/72, /*y=*/500, /*w=*/220, /*h=*/130, raster_opts);
 ```
 
-`draw_pdf_vector` is the vector-backend equivalent (native paths for pie; other chart types
-raster-fall back automatically, same as `PdfBackend::Vector` above).
+`draw_pdf_vector` is the vector-backend equivalent (native paths for pie, bar, line, area and combo;
+scatter raster-falls back automatically, same as `PdfBackend::Vector` above).
 
 ## Full working example
 

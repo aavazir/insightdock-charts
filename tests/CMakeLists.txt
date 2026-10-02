@@ -11,6 +11,10 @@ set_tests_properties(smoke_render_png PROPERTIES WORKING_DIRECTORY ${CMAKE_BINAR
 add_executable(insightdock_unit_tests unit_tests.cc)
 find_package(Threads REQUIRED)
 target_link_libraries(insightdock_unit_tests PRIVATE InsightDock::Charts Threads::Threads)
+if(INSIGHTDOCK_WITH_PODOFO)
+  # PoDoFo's private config headers, for the vector-PDF tests that load the result back.
+  target_include_directories(insightdock_unit_tests PRIVATE ${_insightdock_podofo_include_dirs})
+endif()
 if(INSIGHTDOCK_FONT_LATIN)
   target_compile_definitions(insightdock_unit_tests PRIVATE INSIGHTDOCK_FONT_LATIN=1)
 endif()

@@ -144,8 +144,7 @@ void SvgTarget::fill_circle(float cx, float cy, float radius, Color const &color
            fill_attrs(color) + "/>\n";
 }
 
-void SvgTarget::draw_line(float x0, float y0, float x1, float y1, float width,
-                          Color const &color) {
+void SvgTarget::draw_line(float x0, float y0, float x1, float y1, float width, Color const &color) {
   draw_dashed_line(x0, y0, x1, y1, width, color, {});
 }
 
@@ -184,7 +183,8 @@ void SvgTarget::text_element(Font const &font, std::string const &text, Color co
   int line = 0;
   while (start <= text.size()) {
     std::size_t end = text.find('\n', start);
-    std::string seg = text.substr(start, end == std::string::npos ? std::string::npos : end - start);
+    std::string seg =
+        text.substr(start, end == std::string::npos ? std::string::npos : end - start);
     if (!seg.empty()) {
       body_ += "<text";
       if (transform)
@@ -210,8 +210,8 @@ void SvgTarget::draw_text(Font const &font, float x, float y, std::string const 
   text_element(font, text, color, anchor, x, y + font.baseline_offset(baseline), nullptr);
 }
 
-void SvgTarget::draw_text_rotated_ccw(Font const &font, float cx, float cy,
-                                      std::string const &text, Color const &color) {
+void SvgTarget::draw_text_rotated_ccw(Font const &font, float cx, float cy, std::string const &text,
+                                      Color const &color) {
   if (text.empty())
     return;
   std::string tf = "translate(" + num(cx) + " " + num(cy) + ") rotate(-90)";
@@ -233,8 +233,8 @@ std::string SvgTarget::str() const {
   std::string xml;
   xml.reserve(body_.size() + 256);
   xml += "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
-  xml += "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"" + num(w_) + "\" height=\"" +
-         num(h_) + "\" viewBox=\"0 0 " + num(w_) + " " + num(h_) + "\">\n";
+  xml += "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"" + num(w_) + "\" height=\"" + num(h_) +
+         "\" viewBox=\"0 0 " + num(w_) + " " + num(h_) + "\">\n";
   xml += "<g font-family=\"DejaVu Sans, Verdana, Arial, sans-serif\">\n";
   xml += body_;
   xml += "</g>\n</svg>\n";

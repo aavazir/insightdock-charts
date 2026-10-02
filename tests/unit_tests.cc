@@ -12,6 +12,10 @@
 #include "insightdock/error.h"
 #include "insightdock/svg_writer.h"
 
+#ifdef INSIGHTDOCK_HAS_PODOFO
+#include <podofo/podofo.h>
+#endif
+
 #include <atomic>
 #include <cassert>
 #include <cmath>
@@ -281,6 +285,24 @@ static void test_svg_vector_area_and_combo_are_native() {
   CHECK(has(c, "<rect"));
   CHECK(has(c, "<polyline"));
   CHECK(has(c, "rotate(90)") || has(c, "text-anchor=\"start\"")); // right-axis labels present
+}
+
+static void test_svg_vector_doughnut_paints_hole_in_background() {
+  PieChart pie;
+  pie.options().width = 300;
+  pie.options().height = 300;
+  pie.options().background = Color::rgb(18, 52, 86); // distinctive: 123456
+  pie.add_slice("A", 60);
+  pie.add_slice("B", 40);
+  PieOptions po = pie.pie_options();
+  po.inner_radius_ratio = 0.5;
+  pie.set_pie_options(po);
+  std::string s = vector_svg(pie);
+  // Background rect plus the hole circle both use the background color.
+  std::size_t first = s.find("#123456");
+  CHECK(first != std::string::npos);
+  CHECK(s.find("#123456", first + 1) != std::string::npos);
+  CHECK(s.rfind("<circle") > s.rfind("<path")); // hole is drawn after the slices
 }
 
 static void test_svg_vector_scatter_falls_back_to_raster() {
@@ -855,10 +877,8 @@ static void test_draw_marker_square_fills_corners_circle_does_not() {
   circle_buf.clear(Color::rgba(0, 0, 0, 0));
   RasterTarget square_target(square_buf);
   RasterTarget circle_target(circle_buf);
-  detail::draw_marker(square_target, 10.0f, 10.0f, 6.0f, PointMarkerShape::Square,
-                      Color::black());
-  detail::draw_marker(circle_target, 10.0f, 10.0f, 6.0f, PointMarkerShape::Circle,
-                      Color::black());
+  detail::draw_marker(square_target, 10.0f, 10.0f, 6.0f, PointMarkerShape::Square, Color::black());
+  detail::draw_marker(circle_target, 10.0f, 10.0f, 6.0f, PointMarkerShape::Circle, Color::black());
 
   // A point near the marker's bounding-box corner is inside a square marker's footprint
   // but outside a circle's — this is how chart code can trust the shapes actually differ.
@@ -2046,6 +2066,115 @@ static void test_pdf_backend_does_not_hijack_png_export() {
   }
 }
 
+#ifdef INSIGHTDOCK_HAS_PODOFO
+// ── Native vector PDF ────────────────────────────────────────────────────────────────────────
+
+static std::string vector_pdf(Chart &chart) {
+  ExportOptions opts;
+  opts.format = OutputFormat::PdfVector;
+  auto bytes = ChartExporter::encode(chart, opts);
+  CHECK(static_cast<bool>(bytes));
+  std::string s(bytes.value.begin(), bytes.value.end());
+  CHECK(s.compare(0, 5, "%PDF-") == 0);
+  // The document must load back and hold exactly one page.
+  try {
+    PoDoFo::PdfMemDocument doc;
+    doc.LoadFromBuffer(PoDoFo::bufferview(s.data(), s.size()));
+    CHECK(doc.GetPages().GetCount() == 1);
+  } catch (std::exception const &) {
+    CHECK(false);
+  }
+  return s;
+}
+
+static void test_pdf_vector_cartesian_charts_have_no_embedded_image() {
+  BarChart bar;
+  bar.options().width = 300;
+  bar.options().height = 200;
+  bar.options().title = "Caf\xC3\xA9 \xE2\x82\xAC"; // Café €  (WinAnsi-encodable)
+  bar.set_categories({"a", "b"});
+  bar.add_series("s", {1, 2});
+  CHECK(vector_pdf(bar).find("/Image") == std::string::npos);
+
+  LineChart line;
+  line.options().width = 300;
+  line.options().height = 200;
+  line.set_categories({"a", "b", "c"});
+  SeriesStyle st;
+  st.dash = DashPattern{4.0f, 2.0f};
+  line.add_series("s", {1, 3, 2}, Color::rgb(10, 120, 200), st);
+  CHECK(vector_pdf(line).find("/Image") == std::string::npos);
+
+  AreaChart area;
+  area.options().width = 300;
+  area.options().height = 200;
+  area.set_categories({"a", "b", "c"});
+  area.add_series("s", {1, 3, 2});
+  std::string a = vector_pdf(area);
+  CHECK(a.find("/Image") == std::string::npos);
+  CHECK(a.find("/ExtGState") != std::string::npos); // translucent fill uses ExtGState opacity
+
+  ComboChart combo;
+  combo.options().width = 300;
+  combo.options().height = 200;
+  combo.set_categories({"a", "b"});
+  combo.add_bar_series("bars", {5, 6});
+  combo.add_line_series("line", {50, 60}, true);
+  CHECK(vector_pdf(combo).find("/Image") == std::string::npos);
+}
+
+static void test_pdf_vector_unencodable_text_does_not_abort() {
+  BarChart bar;
+  bar.options().width = 300;
+  bar.options().height = 200;
+  bar.options().title = "\xE4\xB8\xAD\xE6\x96\x87 title"; // CJK is not WinAnsi
+  bar.set_categories({"\xCE\xB1", "b"});
+  bar.add_series("s", {1, 2});
+  vector_pdf(bar); // must still produce a valid one-page PDF
+}
+
+static void test_pdf_vector_scatter_still_embeds_raster() {
+  ScatterChart sc;
+  sc.options().width = 200;
+  sc.options().height = 150;
+  sc.add_series("p", {{1, 1}, {2, 3}});
+  CHECK(vector_pdf(sc).find("/Image") != std::string::npos);
+}
+#endif
+
+// Hostile values must never leak "nan"/"inf" into vector output or abort it.
+static void test_hostile_values_vector_outputs() {
+  double const nan = std::nan("");
+  double const inf = std::numeric_limits<double>::infinity();
+  std::vector<std::vector<double>> cases = {
+      {nan, 1, 2}, {inf, 1, 2}, {1e300, -1e300, 5}, {nan, nan, nan}, {inf, -inf, nan}, {},
+  };
+  for (auto const &vals : cases) {
+    BarChart bar;
+    bar.set_categories({"a", "b", "c"});
+    bar.add_series("s", vals);
+    LineChart line;
+    line.set_categories({"a", "b", "c"});
+    line.add_series("s", vals);
+    line.line_options().dash = {4.0f, 2.0f};
+    AreaChart area;
+    area.set_categories({"a", "b", "c"});
+    area.add_series("s", vals);
+    ComboChart combo;
+    combo.set_categories({"a", "b", "c"});
+    combo.add_bar_series("b", vals);
+    combo.add_line_series("l", vals, true);
+    for (Chart *c : {static_cast<Chart *>(&bar), static_cast<Chart *>(&line),
+                     static_cast<Chart *>(&area), static_cast<Chart *>(&combo)}) {
+      std::string svg = vector_svg(*c);
+      CHECK(!has(svg, "nan") && !has(svg, "inf"));
+#ifdef INSIGHTDOCK_HAS_PODOFO
+      vector_pdf(*c);
+#endif
+    }
+  }
+}
+
 // ── Per-series style and gap policy ──────────────────────────────────────────────────────────
 
 // Total "ink" of c's hue in the image: anti-aliased edge pixels count fractionally, grey text,
@@ -2264,6 +2393,11 @@ int main() {
   test_stacked_area_nan_counts_as_zero();
   test_decimate_keeps_gap_markers();
   test_pdf_backend_does_not_hijack_png_export();
+#ifdef INSIGHTDOCK_HAS_PODOFO
+  test_pdf_vector_cartesian_charts_have_no_embedded_image();
+  test_pdf_vector_unencodable_text_does_not_abort();
+  test_pdf_vector_scatter_still_embeds_raster();
+#endif
   test_supersampled_export_does_not_mutate_chart_and_is_thread_safe();
 #ifdef INSIGHTDOCK_FONT_LATIN
   test_latin_embedded_font_has_accents();
@@ -2274,6 +2408,7 @@ int main() {
   test_chart_uses_injected_font();
   test_fuzz_hostile_data_all_chart_types();
   test_hostile_values_all_cartesian_charts();
+  test_hostile_values_vector_outputs();
   test_hostile_scatter_and_pie();
   test_nonfinite_primitives_do_not_hang();
   test_scale_nonfinite_domain_is_sanitized();
@@ -2341,6 +2476,7 @@ int main() {
   test_svg_vector_line_chart_is_native();
   test_svg_vector_area_and_combo_are_native();
   test_svg_vector_scatter_falls_back_to_raster();
+  test_svg_vector_doughnut_paints_hole_in_background();
 
   // PieChart doughnut cutout
   test_pie_doughnut_cutout_center_matches_background();

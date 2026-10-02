@@ -211,7 +211,7 @@ if(INSIGHTDOCK_WITH_PODOFO)
   endif()
 
   target_sources(InsightDockCharts PRIVATE
-    src/podofo_adapter.cc src/podofo_vector.cc src/pdf_report.cc)
+    src/podofo_adapter.cc src/podofo_vector.cc src/podofo_target.cc src/pdf_report.cc)
   target_compile_definitions(InsightDockCharts PUBLIC INSIGHTDOCK_HAS_PODOFO=1)
   target_link_libraries(InsightDockCharts PUBLIC podofo::podofo)
   target_include_directories(InsightDockCharts PRIVATE

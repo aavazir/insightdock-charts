@@ -32,7 +32,7 @@ See [Examples](examples.md) for the full set of sample programs, or jump straigh
 
 - **Chart types** — pie, vertical bar (grouped / stacked), multi-series line (optional area fill), area (stacked), combo (bar + line), scatter and bubble
 - **Easy export** — one API, `ChartExporter::save(chart, "output.png")`, for PNG, JPEG, SVG, and PDF
-- **Output** — RGBA `ImageBuffer`, PNG/JPEG, SVG (raster embed everywhere; native vector paths for pie), PDF raster embed, native vector PDF pies
+- **Output** — RGBA `ImageBuffer`, PNG/JPEG, SVG and PDF as native vector output for pie, bar, line, area and combo (scatter embeds a raster), or a raster embed for every chart type
 - **Styling** — Chart.js / AmCharts 12-color palette, Tableau-10 palette (pie), axes, grid, legend, title
 - **Text** — embedded ASCII-subset TTF (~20 KB); optional runtime TTF load for full Unicode
 - **Core deps** — C++17 stdlib only (stb headers compiled into the library)

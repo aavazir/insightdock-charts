@@ -6,8 +6,8 @@
 
 #include "insightdock/chart_style.h"
 #include "insightdock/color.h"
-#include "insightdock/export_macros.h"
 #include "insightdock/draw_target.h"
+#include "insightdock/export_macros.h"
 
 namespace insightdock::charts::detail {
 

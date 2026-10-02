@@ -1,8 +1,7 @@
 # Pie chart
 
 `PieChart` (`insightdock/pie_chart.h`) renders labeled slices with a legend, Tableau-10 or
-Chart.js palette, and — uniquely among chart types — native vector output for both SVG and PDF, not
-just raster.
+Chart.js palette, and native vector output for both SVG and PDF, not just raster.
 
 ![Pie chart](../img/gallery/pie_chart.png)
 
@@ -57,7 +56,7 @@ pie.set_pie_options(opts);
 | `stroke_width` | `2.0` | Slice outline width in pixels. |
 | `label_color` | `rgb(34,34,34)` | Label text color. |
 | `label_font_size` | `11.0` | Label font size in pixels. |
-| `inner_radius_ratio` | `0.0` | Doughnut cutout, as a fraction of `radius`, `[0, 1)`. `0` = plain pie. Raster output only — vector SVG/PDF don't draw the cutout yet. |
+| `inner_radius_ratio` | `0.0` | Doughnut cutout, as a fraction of `radius`, `[0, 1)`. `0` = plain pie. Drawn in raster, SVG and PDF output (the hole is painted in the chart background color). |
 | `data_labels` | disabled | `DataLabelOptions` — an in-slice value/percentage label at `radius*0.65` along each slice's midpoint, distinct from the external leader-line label above. |
 
 ## Doughnut chart
@@ -87,8 +86,8 @@ pie.add_slice("aa:bb:cc:dd:ee:ff\n(laptop-01)", 40);
 
 ## Vector output (SVG and PDF)
 
-Pie is the only chart type with native vector paths in both output formats — every other chart
-type falls back to a rasterized-and-embedded PNG in SVG/PDF.
+Pie has its own dedicated vector pipeline (leader-line labels, legend). Bar, line, area and combo
+charts also export as native vector — see [Vector export](../guides/vector-export.md).
 
 ```cpp
 ExportOptions opts;

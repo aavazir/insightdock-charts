@@ -5,8 +5,8 @@
 #define INSIGHTDOCK_CHARTS_DETAIL_BAR_SHAPE_H
 
 #include "insightdock/color.h"
-#include "insightdock/export_macros.h"
 #include "insightdock/draw_target.h"
+#include "insightdock/export_macros.h"
 
 namespace insightdock::charts::detail {
 

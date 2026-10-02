@@ -174,7 +174,7 @@ void CartesianChart::draw_title(DrawTarget &buf, Font &font) const {
   float tw = font.measure_width(options_.title);
   float x = (buf.width() - tw) * 0.5f;
   buf.draw_text(font, x, 12.0f, options_.title, options_.title_color, TextAlign::Left,
-                 TextBaseline::Top);
+                TextBaseline::Top);
   font.set_size(options_.font_size);
 }
 
@@ -211,7 +211,7 @@ void CartesianChart::draw_axes_and_grid(PlotContext &ctx) const {
       std::string label = detail::format_tick_value(v, ctx.cart_opts.y_tick_format,
                                                     ctx.cart_opts.custom_y_formatter);
       buf.draw_text(font, px, plot.bottom() + 8.0f, label, ctx.opts.text_color, TextAlign::Center,
-                     TextBaseline::Top);
+                    TextBaseline::Top);
     }
   } else {
     for (double v : y_ticks) {
@@ -226,7 +226,7 @@ void CartesianChart::draw_axes_and_grid(PlotContext &ctx) const {
       std::string label = detail::format_tick_value(v, ctx.cart_opts.y_tick_format,
                                                     ctx.cart_opts.custom_y_formatter);
       buf.draw_text(font, plot.left() - 8.0f, py, label, ctx.opts.text_color, TextAlign::Right,
-                     TextBaseline::Middle);
+                    TextBaseline::Middle);
     }
   }
 
@@ -241,7 +241,7 @@ void CartesianChart::draw_axes_and_grid(PlotContext &ctx) const {
       std::string label = detail::format_tick_value(v, ctx.cart_opts.y2_tick_format,
                                                     ctx.cart_opts.custom_y2_formatter);
       buf.draw_text(font, plot.right() + 8.0f, py, label, ctx.opts.text_color, TextAlign::Left,
-                     TextBaseline::Middle);
+                    TextBaseline::Middle);
     }
   }
 
@@ -256,7 +256,7 @@ void CartesianChart::draw_axes_and_grid(PlotContext &ctx) const {
     for (std::size_t i = 0; i < ctx.categories.size(); ++i) {
       float py = plot.top() + slot * (static_cast<float>(i) + 0.5f);
       buf.draw_text(font, plot.left() - 8.0f, py, ctx.categories[i], ctx.opts.text_color,
-                     TextAlign::Right, TextBaseline::Middle);
+                    TextAlign::Right, TextBaseline::Middle);
     }
   } else if (ctx.continuous_x) {
     // Continuous (DateTime) x-axis: nice ticks from the numeric domain, formatted the same
@@ -270,7 +270,7 @@ void CartesianChart::draw_axes_and_grid(PlotContext &ctx) const {
         buf.draw_line(cx, plot.top(), cx, plot.bottom(), 1.0f, ctx.opts.grid_color);
       std::string label = detail::format_tick_value(v, TickFormat::DateTime, nullptr);
       buf.draw_text(font, cx, plot.bottom() + 8.0f, label, ctx.opts.text_color, TextAlign::Center,
-                     TextBaseline::Top);
+                    TextBaseline::Top);
     }
   } else {
     // X-axis category labels with collision avoidance
@@ -314,14 +314,14 @@ void CartesianChart::draw_axes_and_grid(PlotContext &ctx) const {
         // Text reads bottom-to-top, so its end sits against the axis.
         float w = font.measure_width(ctx.categories[i]);
         buf.draw_text_rotated_ccw(font, cx, plot.bottom() + 8.0f + w * 0.5f + 1.0f,
-                                   ctx.categories[i], ctx.opts.text_color);
+                                  ctx.categories[i], ctx.opts.text_color);
         continue;
       }
       std::string label = ctx.categories[i];
       if (mode == CartesianOptions::XLabelMode::Truncate)
         label = truncate_to_width(font, label, slot * static_cast<float>(step) - 4.0f);
       buf.draw_text(font, cx, plot.bottom() + 8.0f, label, ctx.opts.text_color, TextAlign::Center,
-                     TextBaseline::Top);
+                    TextBaseline::Top);
     }
   }
 
@@ -336,17 +336,16 @@ void CartesianChart::draw_axes_and_grid(PlotContext &ctx) const {
   if (!ctx.cart_opts.y_axis_label.empty()) {
     float lh = font.line_height();
     buf.draw_text_rotated_ccw(font, lh * 0.5f + 4.0f, plot.center_y(), ctx.cart_opts.y_axis_label,
-                               ctx.opts.text_color);
+                              ctx.opts.text_color);
   }
   if (ctx.has_y2 && !ctx.cart_opts.y2_axis_label.empty()) {
     float lh = font.line_height();
-    buf.draw_text_rotated_cw(font, buf.width() - lh * 0.5f - 4.0f,
-                              plot.center_y(), ctx.cart_opts.y2_axis_label, ctx.opts.text_color);
+    buf.draw_text_rotated_cw(font, buf.width() - lh * 0.5f - 4.0f, plot.center_y(),
+                             ctx.cart_opts.y2_axis_label, ctx.opts.text_color);
   }
   if (!ctx.cart_opts.x_axis_label.empty()) {
-    buf.draw_text(font, plot.center_x(), buf.height() - 8.0f,
-                   ctx.cart_opts.x_axis_label, ctx.opts.text_color, TextAlign::Center,
-                   TextBaseline::Bottom);
+    buf.draw_text(font, plot.center_x(), buf.height() - 8.0f, ctx.cart_opts.x_axis_label,
+                  ctx.opts.text_color, TextAlign::Center, TextBaseline::Bottom);
   }
 }
 
@@ -395,7 +394,7 @@ void CartesianChart::draw_legend(DrawTarget &buf, Font &font, Rect plot) const {
       auto const &s = series_[i];
       draw_legend_swatch(buf, s, x, y, box);
       buf.draw_text(font, x + box + 6.0f, y + box * 0.5f, s.label, options_.text_color,
-                     TextAlign::Left, TextBaseline::Middle);
+                    TextAlign::Left, TextBaseline::Middle);
       y += box + 8.0f;
     }
     return;
@@ -404,7 +403,7 @@ void CartesianChart::draw_legend(DrawTarget &buf, Font &font, Rect plot) const {
   for (auto const &s : series_) {
     draw_legend_swatch(buf, s, x, y, box);
     buf.draw_text(font, x + box + 6.0f, y + box * 0.5f, s.label, options_.text_color,
-                   TextAlign::Left, TextBaseline::Middle);
+                  TextAlign::Left, TextBaseline::Middle);
     x += item_w + gap;
   }
 }

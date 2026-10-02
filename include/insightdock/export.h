@@ -41,7 +41,7 @@ enum class OutputFormat {
 /** @brief PDF embedding strategy when writing or drawing PDF output. */
 enum class PdfBackend {
   Raster, ///< Rasterize chart to PNG and embed (works for all chart types).
-  Vector, ///< Native PDF paths for pie; bar/line fall back to raster.
+  Vector, ///< Native PDF paths and text for pie, bar, line, area and combo; scatter embeds raster.
 };
 
 /** @brief SVG drawing strategy when writing or encoding SVG output. */
@@ -145,7 +145,7 @@ public:
   /**
    * @brief Embed a chart using native PDF vectors when supported.
    *
-   * Pie charts render as vector paths; bar and line charts raster-fallback.
+   * Pie, bar, line, area and combo charts render as vector paths and text; scatter raster-falls back.
    *
    * @see draw_pdf
    */

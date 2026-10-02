@@ -173,6 +173,13 @@ std::string build_pie_svg(PieChart const &chart) {
     angle = end_angle;
   }
 
+  // Doughnut cutout: paint the hole in the background color, as the raster path does.
+  if (pie_opts.inner_radius_ratio > 0.0) {
+    svg << "  <circle cx=\"" << fmt(cx) << "\" cy=\"" << fmt(cy) << "\" r=\""
+        << fmt(radius * std::min(pie_opts.inner_radius_ratio, 0.999)) << "\" fill=\""
+        << rgb(opts.background) << "\"/>\n";
+  }
+
   if (pie_opts.show_labels) {
     float fs = pie_opts.label_font_size;
     float knee_len = fs * 2.0f;

@@ -28,14 +28,14 @@ int main() {
   bar.set_categories({"A", "B", "C"});
   bar.add_series("2024", {30, 45, 60});
   bar.add_series("2025", {40, 50, 55});
-  insightdock::charts::ChartExporter::draw_pdf(doc, painter, bar, 72, 500, 220, 130, raster_opts);
+  insightdock::charts::ChartExporter::draw_pdf(doc, painter, bar, 72, 500, 220, 130, vector_opts);
 
   insightdock::charts::LineChart line;
   line.options().width = 480;
   line.options().height = 280;
   line.set_categories({"W1", "W2", "W3", "W4"});
   line.add_series("Trend", {5, 12, 8, 15});
-  insightdock::charts::ChartExporter::draw_pdf(doc, painter, line, 320, 500, 220, 130, raster_opts);
+  insightdock::charts::ChartExporter::draw_pdf(doc, painter, line, 320, 500, 220, 130, vector_opts);
 
   insightdock::charts::PieChart pie;
   pie.options().width = 280;
@@ -48,7 +48,7 @@ int main() {
 
   painter.FinishDrawing();
   doc.Save("chart_report.pdf");
-  std::cout << "Wrote chart_report.pdf (bar/line raster, pie vector PDF)\n";
+  std::cout << "Wrote chart_report.pdf (vector PDF)\n";
 
   if (insightdock::charts::ChartExporter::save(pie, "pie_vector.pdf", vector_opts))
     std::cout << "Wrote pie_vector.pdf (standalone vector pie via ChartExporter::save)\n";

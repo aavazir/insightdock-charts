@@ -36,8 +36,10 @@ continuous numeric domain?*
 ## The render pipeline
 
 Every chart's public entry point is `render() -> ImageBuffer` (RGBA, row-major). For
-`CartesianChart` subclasses, `render()` itself is not virtual — it's implemented once in
-`CartesianChart` and calls, in order:
+`CartesianChart` subclasses, `render()` itself is not virtual — it creates the image, wraps it in a
+`RasterTarget` and calls `Chart::draw(DrawTarget&)`. That same `draw()` is what the SVG and PDF
+exporters call with an `SvgTarget` / `PdfTarget`, which is how Cartesian charts get native vector
+output (see [Vector export](guides/vector-export.md)). `draw()` runs, in order:
 
 1. `draw_background()` — fills the canvas with `ChartOptions::background`.
 2. `draw_title()` — chart title, if set.
@@ -55,7 +57,8 @@ Every chart's public entry point is `render() -> ImageBuffer` (RGBA, row-major).
 7. `draw_legend()` — one entry per series, using each `DataSeries::color`.
 
 `PieChart` and `ScatterChart` don't go through this pipeline — they override `render()` directly
-since they don't share the category/series axis model.
+since they don't share the category/series axis model. (`PieChart` has its own vector SVG/PDF
+writers; `ScatterChart` embeds a raster image in vector formats.)
 
 ## `PlotContext`
 
@@ -64,7 +67,7 @@ needed to draw geometry without recomputing it:
 
 | Field | Purpose |
 |---|---|
-| `buffer` | Target `ImageBuffer` — draw directly onto this. |
+| `target` | `DrawTarget&` — draw onto this (raster, SVG or PDF). Use its methods (`fill_rect`, `draw_dashed_polyline`, `draw_text(font, ...)`, …) rather than `ImageBuffer` ones. |
 | `plot` | Plot area `Rect`, already inset for margins/labels. |
 | `x_scale` | Category index → pixel X. |
 | `y_scale` | Data value → pixel Y (primary, left axis). |

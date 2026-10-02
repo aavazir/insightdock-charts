@@ -22,7 +22,7 @@ InsightDock does **not** claim to beat every library on every axis. It targets d
 |---|---------------|---------------------|
 | License | Commercial | MIT |
 | Chart breadth | Very broad (3D, heatmap, gantt, …) | Pie, bar, line, area, combo, scatter/bubble |
-| Report / PDF | Strong multi-page reports | PNG/JPEG; PDF raster + vector pies; multi-page report builder with chart embedding (PoDoFo) |
+| Report / PDF | Strong multi-page reports | PNG/JPEG; native vector PDF (pie, bar, line, area, combo) + raster embed; multi-page report builder with chart embedding (PoDoFo) |
 | Interactivity | Zoom, tooltips, hit-testing | Static output (roadmap: hooks) |
 | Integration | Many language bindings | Native C++17 |
 | Embedded / OpenWrt | Possible | Core designed for it (Make, no GUI deps) |
@@ -55,7 +55,7 @@ InsightDock does **not** claim to beat every library on every axis. It targets d
 | Model | Immediate-mode, Dear ImGui | Retained raster/vector export |
 | GUI required | Yes (ImGui) | No — headless/server |
 | Best for | Live desktop tools, debugging UIs | PDF reports, batch PNG, embedded |
-| PDF / print reports | Via screenshot/export, not first-class | First-class (`ChartExporter`, vector PDF pies) |
+| PDF / print reports | Via screenshot/export, not first-class | First-class (`ChartExporter`, native vector PDF) |
 | OpenWrt / firmware | ImGui + backend overhead | STL-only core, Makefile |
 
 ### PLplot
@@ -64,7 +64,7 @@ InsightDock does **not** claim to beat every library on every axis. It targets d
 |---|--------|---------------------|
 | License | LGPL (library) | MIT |
 | Focus | Scientific plotting | Application/report charts |
-| Output | Many devices (SVG, PDF, PNG, …) | PNG, JPEG, SVG (raster + native vector pie), PDF (PoDoFo) |
+| Output | Many devices (SVG, PDF, PNG, …) | PNG, JPEG, SVG (raster + native vector), PDF (PoDoFo) |
 | API style | C/Fortran heritage, device drivers | Modern C++17, minimal surface |
 | Embedded | Heavier dependency story | Lightweight core |
 
@@ -75,7 +75,7 @@ InsightDock does **not** claim to beat every library on every axis. It targets d
 | License | GPL / commercial Qt | MIT |
 | Model | QWidget / QML, interactive | Static export |
 | GUI required | Yes | No |
-| PDF reports | Via Qt print/PDF | PoDoFo embed + vector pies |
+| PDF reports | Via Qt print/PDF | PoDoFo embed + native vector charts |
 | Footprint | Full Qt stack | Core: STL + stb only |
 
 ### matplotlib-cpp
@@ -93,7 +93,7 @@ InsightDock does **not** claim to beat every library on every axis. It targets d
 | | Typical header-only plotters | InsightDock (v0.7) |
 |---|------------------------------|---------------------|
 | Maturity | Varies; often academic/scientific | Production report generation (PDF/PNG output) |
-| PDF vector in reports | Rare | Native vector pies + raster embed |
+| PDF vector in reports | Rare | Native vector charts (pie, bar, line, area, combo) + raster embed |
 | Chart types for dashboards | Line/scatter focus | Pie, bar, line, scatter/bubble + report styling |
 
 ---
@@ -119,8 +119,8 @@ Future website may include a **“Choose your stack”** section: web dashboard 
 - **No GUI toolkit** required (vs ImPlot, Qt Charts)
 - **No Python/runtime** dependency (vs matplotlib-cpp)
 - **Simple export API** — `ChartExporter::save(chart, "out.png")` in a few lines
-- **Vector PDF pies** for print-quality reports (PoDoFo)
-- **SVG export** — raster embed for every chart type; native vector `<path>` output for pie
+- **Vector PDF** for print-quality reports (PoDoFo) — pie, bar, line, area, combo
+- **SVG export** — raster embed for every chart type; native vector shapes and `<text>` for pie, bar, line, area, combo
 - **OpenWrt / cross-compile** friendly core (Make + minimal deps)
 - **Extensible C++** architecture open to contributions
 
@@ -128,7 +128,7 @@ Future website may include a **“Choose your stack”** section: web dashboard 
 
 - Chart type count (vs ChartDirector, ECharts)
 - Finance / TA depth (vs StockChartX)
-- Native SVG vector paths for bar/line (pie only so far)
+- Native vector output for scatter (raster embed today)
 - Interactivity (vs ImPlot, Qt, web libs)
 - Published benchmarks — internal baseline recorded in [BENCHMARKS.md](BENCHMARKS.md); not yet vetted for public performance claims
 
