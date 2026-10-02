@@ -17,7 +17,7 @@ namespace insightdock::charts {
 
 /** @brief Area-specific drawing options. */
 struct AreaChartOptions {
-  bool stacked = false;    ///< Stack series polygons instead of overlapping.
+  bool stacked = false; ///< Stack series polygons instead of overlapping.
   /**
    * 100%-stacked: every category is normalised to 100, so the chart shows each series' share.
    * Implies stacking; the y-axis runs 0-100% and a category whose total is not positive is empty.

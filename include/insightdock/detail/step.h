@@ -10,8 +10,8 @@
 namespace insightdock::charts::detail {
 
 /** @brief Expands a polyline into a staircase according to @p mode (pixel space). */
-inline std::vector<std::pair<float, float>> expand_steps(std::vector<std::pair<float, float>> const &pts,
-                                                         StepMode mode) {
+inline std::vector<std::pair<float, float>>
+expand_steps(std::vector<std::pair<float, float>> const &pts, StepMode mode) {
   if (mode == StepMode::None || pts.size() < 2)
     return pts;
   std::vector<std::pair<float, float>> out;

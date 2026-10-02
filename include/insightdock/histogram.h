@@ -22,7 +22,8 @@ namespace insightdock::charts {
 struct HistogramOptions {
   /** Number of equal-width bins; 0 picks one with Sturges' rule (1 + log2 n), capped at 100. */
   std::size_t bins = 0;
-  /** Lower bound of the first bin; used only when `min_value < max_value`, else the data minimum. */
+  /** Lower bound of the first bin; used only when `min_value < max_value`, else the data minimum.
+   */
   double min_value = 0.0;
   /** Upper bound of the last bin (see @p min_value). Values outside the range are ignored. */
   double max_value = 0.0;
@@ -30,8 +31,9 @@ struct HistogramOptions {
 
 /** @brief Result of @ref compute_histogram: `edges.size() == counts.size() + 1`. */
 struct Histogram {
-  std::vector<double> edges;       ///< Bin boundaries, ascending.
-  std::vector<std::size_t> counts; ///< Number of samples per bin; the last bin includes its upper edge.
+  std::vector<double> edges; ///< Bin boundaries, ascending.
+  std::vector<std::size_t>
+      counts; ///< Number of samples per bin; the last bin includes its upper edge.
 };
 
 /**

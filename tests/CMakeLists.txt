@@ -38,4 +38,7 @@ add_test(NAME find_package_consumer
     -DSOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}/consumer
     -DWORK_DIR=${CMAKE_BINARY_DIR}/consumer-test
     -DCONFIG=$<CONFIG>
+    "-DCXX_COMPILER=${CMAKE_CXX_COMPILER}"
+    "-DCXX_FLAGS=${CMAKE_CXX_FLAGS}"
+    "-DEXE_LINKER_FLAGS=${CMAKE_EXE_LINKER_FLAGS}"
     -P ${CMAKE_CURRENT_SOURCE_DIR}/consumer/run.cmake)

@@ -153,11 +153,11 @@ Rect CartesianChart::compute_plot_rect(float w, float h, Font const &font) const
     // x-label gap + x-label row + gap + legend row + optional x-axis title
     m.bottom = std::max(m.bottom, 8.0f + label_row + 8.0f + legend_row + x_title_h);
   } else if (rotated || label_row > font.line_height() + 0.5f) {
-    float x_title_h = cartesian_.x_axis_label.empty()
-                          ? 0.0f
-                          : font.line_height() *
-                                    static_cast<float>(detail::line_count(cartesian_.x_axis_label)) +
-                                8.0f;
+    float x_title_h =
+        cartesian_.x_axis_label.empty()
+            ? 0.0f
+            : font.line_height() * static_cast<float>(detail::line_count(cartesian_.x_axis_label)) +
+                  8.0f;
     m.bottom = std::max(m.bottom, 8.0f + label_row + 8.0f + x_title_h);
   }
   if (options_.legend.enabled && options_.legend.position == LegendOptions::Position::Right) {
@@ -194,8 +194,7 @@ void CartesianChart::draw_title(DrawTarget &buf, Font &font) const {
   std::size_t start = 0;
   for (;;) {
     std::size_t nl = options_.title.find('\n', start);
-    std::string line =
-        options_.title.substr(start, nl == std::string::npos ? nl : nl - start);
+    std::string line = options_.title.substr(start, nl == std::string::npos ? nl : nl - start);
     float tw = font.measure_width(line);
     float x = (buf.width() - tw) * 0.5f;
     buf.draw_text(font, x, y, line, options_.title_color, TextAlign::Left, TextBaseline::Top);
@@ -214,7 +213,8 @@ std::string CartesianChart::y_tick_label(double v, PlotContext const &ctx) const
     std::snprintf(buf, sizeof(buf), "%g%%", v);
     return buf;
   }
-  return detail::format_tick_value(v, ctx.cart_opts.y_tick_format, ctx.cart_opts.custom_y_formatter);
+  return detail::format_tick_value(v, ctx.cart_opts.y_tick_format,
+                                   ctx.cart_opts.custom_y_formatter);
 }
 
 void CartesianChart::draw_axes_and_grid(PlotContext &ctx) const {

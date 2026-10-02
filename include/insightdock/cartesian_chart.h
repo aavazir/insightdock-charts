@@ -311,7 +311,8 @@ protected:
   virtual double compute_y_min() const;
   /** @brief Maximum y value for scale (default: data max with padding). */
   virtual double compute_y_max() const;
-  /** @brief True when the primary value axis is a 0-100 share (100%-stacked charts); labels get `%`. */
+  /** @brief True when the primary value axis is a 0-100 share (100%-stacked charts); labels get
+   * `%`. */
   virtual bool y_axis_is_percent() const {
     return false;
   }

@@ -24,7 +24,7 @@ if [[ "$($FMT --version)" != *"version 18"* ]]; then
 fi
 
 mapfile -d '' FILES < <(
-  find src include tests -type f \( -name '*.cc' -o -name '*.h' \) -print0
+  find src include tests -type f -not -path 'tests/third_party/*' \( -name '*.cc' -o -name '*.h' \) -print0
 )
 
 if [[ ${#FILES[@]} -eq 0 ]]; then

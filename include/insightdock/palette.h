@@ -19,7 +19,8 @@ namespace insightdock::charts {
 enum class PaletteKind {
   ChartJs,       ///< 12-color Chart.js / AmCharts style palette.
   Tableau10,     ///< 10-color Tableau palette (common in reports).
-  ColorblindSafe ///< 8-color Okabe-Ito palette, distinguishable under common color-vision deficiency.
+  ColorblindSafe ///< 8-color Okabe-Ito palette, distinguishable under common color-vision
+                 ///< deficiency.
 };
 
 /**

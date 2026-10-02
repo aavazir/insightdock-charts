@@ -14,7 +14,7 @@ jobs:
         run: sudo apt-get update -qq && sudo apt-get install -y -qq clang-format-18
       - name: clang-format --dry-run
         run: |
-          find src include tests -type f \( -name '*.cc' -o -name '*.h' \) -print0 \
+          find src include tests -type f -not -path 'tests/third_party/*' \( -name '*.cc' -o -name '*.h' \) -print0 \
             | xargs -0 clang-format-18 --dry-run --Werror
 
   lint-tidy:
@@ -36,6 +36,8 @@ jobs:
         run: |
           status=0
           for f in src/*.cc; do
+            # PoDoFo sources need PoDoFo headers, which this job does not configure.
+            case "$f" in src/podofo_*) continue;; esac
             clang-tidy -p build-tidy "$f" --quiet || status=1
           done
           exit $status

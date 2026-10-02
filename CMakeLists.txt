@@ -55,6 +55,11 @@ set(INSIGHTDOCK_SOURCES
   src/export.cc
 )
 
+# stb_image_write left-shifts negative values (benign, but trips -fsanitize=shift).
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+  set_source_files_properties(src/png_writer.cc PROPERTIES COMPILE_OPTIONS "-fno-sanitize=shift")
+endif()
+
 add_library(InsightDockCharts ${INSIGHTDOCK_SOURCES})
 add_library(InsightDock::Charts ALIAS InsightDockCharts)
 

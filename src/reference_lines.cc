@@ -69,8 +69,7 @@ void draw_line(CartesianChart::PlotContext const &ctx, ReferenceLine const &line
   if (spans_width(ctx, line.orientation)) {
     if (p < plot.top() || p > plot.bottom())
       return;
-    ctx.target.draw_dashed_line(plot.left(), p, plot.right(), p, line.width, line.color,
-                                line.dash);
+    ctx.target.draw_dashed_line(plot.left(), p, plot.right(), p, line.width, line.color, line.dash);
     if (!line.label.empty()) {
       ctx.target.draw_text(ctx.font, plot.right() - 4.0f, p - 4.0f, line.label, line.color,
                            TextAlign::Right, TextBaseline::Bottom);
@@ -78,8 +77,7 @@ void draw_line(CartesianChart::PlotContext const &ctx, ReferenceLine const &line
   } else {
     if (p < plot.left() || p > plot.right())
       return;
-    ctx.target.draw_dashed_line(p, plot.top(), p, plot.bottom(), line.width, line.color,
-                                line.dash);
+    ctx.target.draw_dashed_line(p, plot.top(), p, plot.bottom(), line.width, line.color, line.dash);
     if (!line.label.empty()) {
       ctx.target.draw_text(ctx.font, p + 4.0f, plot.top() + 4.0f, line.label, line.color,
                            TextAlign::Left, TextBaseline::Top);
