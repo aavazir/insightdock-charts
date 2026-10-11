@@ -9,7 +9,7 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Install clang-format
         run: sudo apt-get update -qq && sudo apt-get install -y -qq clang-format-18
       - name: clang-format --dry-run
@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Install clang-tidy
         run: sudo apt-get update -qq && sudo apt-get install -y -qq clang-tidy
       - name: Configure
@@ -60,7 +60,7 @@ jobs:
     name: build-and-test (${{ matrix.os }}, shared=${{ matrix.shared }})
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Configure
         run: >
           cmake -B build
@@ -78,13 +78,13 @@ jobs:
     # CMake, the OpenWrt package and the vcpkg port must declare the same version.
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: ./scripts/check_version.sh
 
   sanitizers:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Configure
         run: |
           cmake -B build-san \
@@ -107,7 +107,7 @@ jobs:
     # The minimal Makefile build (OpenWrt / embedded) must stay in sync with CMake.
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Default configuration (all chart types) + unit tests
         run: make -j"$(nproc)" test
       - name: Minimal configuration (pie only, PNG only, system font)
