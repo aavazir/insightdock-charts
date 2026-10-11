@@ -33,29 +33,44 @@ namespace insightdock::charts {
 enum class OutputFormat {
   Png,       ///< Portable Network Graphics (.png).
   Jpeg,      ///< JPEG (.jpg, .jpeg).
-  Svg,       ///< SVG with chart rasterized as base64-inlined PNG.
+  Svg,       ///< SVG; SvgBackend selects native vector paths or a base64-inlined PNG.
   PdfRaster, ///< Single-page PDF with chart embedded as PNG image.
-  PdfVector, ///< Single-page PDF with native vector graphics where supported (pie).
+  PdfVector, ///< Single-page PDF with native vectors where supported; otherwise raster fallback.
 };
 
 /** @brief PDF embedding strategy when writing or drawing PDF output. */
 enum class PdfBackend {
   Raster, ///< Rasterize chart to PNG and embed (works for all chart types).
-  Vector, ///< Native PDF paths and text for pie, bar, line, area and combo; scatter embeds raster.
+  Vector, ///< Native PDF paths and text for all built-in charts.
 };
 
 /** @brief SVG drawing strategy when writing or encoding SVG output. */
 enum class SvgBackend {
   Raster, ///< Rasterize chart to PNG and base64-inline it (works for all chart types).
-  Vector, ///< Native SVG shapes and `<text>` for pie, bar, line, area and combo; scatter falls back
-          ///< to raster.
+  Vector, ///< Native SVG shapes and `<text>` for all built-in charts.
+};
+
+/** @brief Policy when a chart declines native SVG/PDF drawing. */
+enum class VectorFallback {
+  AllowRaster, ///< Embed a raster image (default, preserves existing behavior).
+  Reject,      ///< Return VectorUnsupported instead of rendering an image.
+};
+
+/** @brief Chart/build capabilities; querying does not draw, clone or validate input. */
+struct ExportCapabilities {
+  VectorCapability vector = VectorCapability::Unknown; ///< Advertised native SVG/PDF support.
+  bool pdf_available = false; ///< Whether this library was built with PoDoFo.
 };
 
 /**
  * @brief Options controlling render quality and output format.
  *
  * @note @p supersample > 1 renders at higher resolution then downsamples for
- *       sharper PNG/JPEG and raster PDF output. Ignored for const @ref ChartExporter::render.
+ *       sharper PNG/JPEG, raster SVG and raster PDF output. Factors are clamped to [1, 8].
+ *       Built-in charts retain their logical layout and all pixel-space style sizes.
+ *       Custom charts should implement draw() and clone() for the same behavior; render()-only
+ *       clones receive scaled common options and must handle their own pixel-space styles.
+ *       Supported for const and mutable charts.
  */
 struct ExportOptions {
   OutputFormat format =
@@ -64,6 +79,7 @@ struct ExportOptions {
   int supersample = 1;   ///< Supersampling factor (1 = none, 2 = 2×, etc.).
   PdfBackend pdf_backend = PdfBackend::Raster; ///< Used by draw_pdf() and PDF save().
   SvgBackend svg_backend = SvgBackend::Raster; ///< Used by SVG save()/encode().
+  VectorFallback vector_fallback = VectorFallback::AllowRaster; ///< Native output fallback policy.
 };
 
 /**
@@ -87,6 +103,9 @@ INSIGHTDOCK_API OutputFormat format_from_path(std::string const &path);
  */
 class INSIGHTDOCK_API ChartExporter {
 public:
+  /** @brief Query advertised chart support and compiled PDF availability without rendering. */
+  static ExportCapabilities capabilities(Chart const &chart) noexcept;
+
   /**
    * @brief Render a chart to an RGBA buffer.
    * @param chart Chart to render (options may be read).
@@ -96,9 +115,9 @@ public:
   static ImageBuffer render(Chart &chart, ExportOptions const &opts = {});
 
   /**
-   * @brief Render a const chart (no supersampling).
+   * @brief Render a const chart, using a cloned chart for supersampling.
    * @param chart Chart to render.
-   * @param opts  Ignored for supersampling on const charts.
+   * @param opts  Render quality options; supersampling requires Chart::clone().
    * @return Rendered image buffer.
    */
   static ImageBuffer render(Chart const &chart, ExportOptions const &opts = {});
@@ -110,10 +129,15 @@ public:
    * @param opts  Export options (quality, supersampling, PDF backend).
    * @return @ref ChartResult<void> — true on success; on failure, @ref ChartResult::error()
    *         distinguishes @ref ChartError::BadPath, @ref ChartError::RenderFailure,
-   *         @ref ChartError::EncodeFailure, and @ref ChartError::PdfUnsupported.
+   *         @ref ChartError::EncodeFailure, @ref ChartError::PdfUnsupported,
+   *         @ref ChartError::InvalidInput, and @ref ChartError::VectorUnsupported.
    *         Contextually converts to `bool` so `if (!ChartExporter::save(...))` still compiles.
    */
   static ChartResult<void> save(Chart &chart, std::string const &path, ExportOptions opts = {});
+
+  /** @brief Save a const chart; same result and extension rules as the mutable overload. */
+  static ChartResult<void> save(Chart const &chart, std::string const &path,
+                                ExportOptions opts = {});
 
   /**
    * @brief Encode a chart to memory.
@@ -123,6 +147,18 @@ public:
    *         @ref ChartError on failure (never returns an empty vector on success).
    */
   static ChartResult<std::vector<uint8_t>> encode(Chart &chart, ExportOptions const &opts = {});
+
+  /**
+   * @brief Encode a const chart without modifying it.
+   *
+   * Standard exceptions during drawing/encoding become EncodeFailure; raster render/clone
+   * exceptions become RenderFailure. File I/O exceptions in save() become BadPath. These
+   * functions are not noexcept: non-standard exceptions from custom code propagate, and
+   * allocation/path preparation outside the guarded operations may throw.
+   * Strict vector output returns VectorUnsupported when draw() declines the target.
+   */
+  static ChartResult<std::vector<uint8_t>> encode(Chart const &chart,
+                                                  ExportOptions const &opts = {});
 
 #ifdef INSIGHTDOCK_HAS_PODOFO
   /**
@@ -139,6 +175,9 @@ public:
    * @param w      Drawn width in PDF points.
    * @param h      Drawn height in PDF points.
    * @param opts   Raster vs vector backend and supersampling.
+   * @throws std::runtime_error If native drawing is declined with vector_fallback = Reject.
+   * Other rendering and PoDoFo exceptions propagate; these void embedding APIs do not return
+   * ChartResult. A failed custom draw may already have written to the supplied page.
    */
   static void draw_pdf(PoDoFo::PdfDocument &doc, PoDoFo::PdfPainter &painter, Chart const &chart,
                        double x, double y, double w, double h, ExportOptions const &opts = {});
@@ -146,8 +185,8 @@ public:
   /**
    * @brief Embed a chart using native PDF vectors when supported.
    *
-   * Pie, bar, line, area and combo charts render as vector paths and text; scatter raster-falls
-   * back.
+   * All built-in charts render as vector paths and text. Custom charts without draw()
+   * fall back to raster unless vector_fallback = Reject (throws std::runtime_error).
    *
    * @see draw_pdf
    */

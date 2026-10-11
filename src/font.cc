@@ -13,7 +13,7 @@
 
 #define STB_TRUETYPE_IMPLEMENTATION
 #define STBTT_STATIC
-#include "../third_party/stb_truetype.h"
+#include <stb_truetype.h>
 
 #include <algorithm>
 #include <cmath>
@@ -97,8 +97,14 @@ FontDataPtr load_font_data(char const *path) {
 #endif
   if (!ifs)
     return nullptr;
-  auto data = std::make_shared<FontData>(std::istreambuf_iterator<char>(ifs),
-                                         std::istreambuf_iterator<char>());
+  ifs.seekg(0, std::ios::end);
+  auto length = ifs.tellg();
+  if (length < 12 || length > static_cast<std::streamoff>(kMaxFontBytes))
+    return nullptr;
+  ifs.seekg(0, std::ios::beg);
+  auto data = std::make_shared<FontData>(static_cast<std::size_t>(length));
+  if (!ifs.read(reinterpret_cast<char *>(data->data()), length))
+    return nullptr;
   if (!parseable(data->data(), data->size()))
     return nullptr;
   return data;

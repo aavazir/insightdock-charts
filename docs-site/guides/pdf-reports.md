@@ -142,8 +142,8 @@ raster_opts.supersample = 2;
 ChartExporter::draw_pdf(doc, painter, bar, /*x=*/72, /*y=*/500, /*w=*/220, /*h=*/130, raster_opts);
 ```
 
-`draw_pdf_vector` is the vector-backend equivalent (native paths for pie, bar, line, area and combo;
-scatter raster-falls back automatically, same as `PdfBackend::Vector` above).
+`draw_pdf_vector` is the vector-backend equivalent (native paths for all built-in charts;
+custom charts without `draw()` fall back to raster, same as `PdfBackend::Vector` above).
 
 ## Full working example
 

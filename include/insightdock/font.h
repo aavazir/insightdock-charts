@@ -94,6 +94,11 @@ public:
 
   /** @brief Set pixel size for rendering (default 14). */
   void set_size(float pixel_size);
+  /** @brief Shared TTF bytes used by this font (for rendering at another resolution). */
+  FontDataPtr data() const {
+    return ttf_;
+  }
+
   /** @brief Current pixel size. */
   float size() const {
     return pixel_size_;

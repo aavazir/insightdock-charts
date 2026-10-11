@@ -22,20 +22,22 @@
 </p>
 
 <p align="center">
-  <img alt="Grouped bar, line and pie charts rendered by InsightDock" src="docs/gallery/bar_grouped.png" width="32%">
+  <img alt="Grouped bar, line and pie charts rendered by InsightDock Charts" src="docs/gallery/bar_grouped.png" width="32%">
   <img alt="Line chart with area fill" src="docs/gallery/line_chart.png" width="32%">
   <img alt="Pie chart" src="docs/gallery/pie_chart.png" width="32%">
 </p>
 
-## Why InsightDock
+## Why InsightDock Charts
 
 - **Reports and servers, not GUIs.** Render from a daemon, CLI tool, container or router. No window, no Qt, no Python, no Gnuplot.
 - **Real vector output.** SVG and PDF contain native paths and selectable text for pie, bar, line, area and combo charts, so they stay sharp at any zoom or print size.
 - **Small and portable.** The core needs only the C++17 standard library; stb headers are vendored. A Make build for OpenWrt lets you drop chart types, JPEG and the embedded font.
-- **Deterministic.** The same data gives the same chart on every machine, using an embedded font.
+- **Predictable output.** Embedded fonts and UTC date labels avoid system-font and timezone
+  differences in raster output. Platform floating-point rounding can differ slightly; vector
+  viewers may substitute fonts (see the vector export guide).
 - **MIT.** No license keys, no copyleft.
 
-InsightDock is static output only. For interactive zoom and pan use QCustomPlot, ImPlot or Qt Charts. See the [honest comparison](docs/COMPARISON.md).
+InsightDock Charts is static output only. For interactive zoom and pan use QCustomPlot, ImPlot or Qt Charts. See the [honest comparison](docs/COMPARISON.md).
 
 ## Quick start
 
@@ -215,12 +217,13 @@ plain-Makefile consumers:
 
 ```bash
 export PKG_CONFIG_PATH="/opt/insightdock/lib/pkgconfig:${PKG_CONFIG_PATH}"
-g++ -std=c++17 $(pkg-config --cflags --libs insightdock) myapp.cc -o myapp
+g++ -std=c++17 $(pkg-config --cflags insightdock) myapp.cc -o myapp $(pkg-config --libs insightdock)
 ```
 
-Note: pass `-DCMAKE_INSTALL_PREFIX=/opt/insightdock` at the `cmake -B build` configure step (not
-just `cmake --install build --prefix ...`) so the generated `.pc` file's paths match where the
-library actually ends up — `configure_file()` bakes `CMAKE_INSTALL_PREFIX` at configure time.
+The `.pc` file resolves paths relative to its installed location, including installations made
+with `cmake --install --prefix`. For PDF-enabled builds, `pkg-config` also requires `libpodofo.pc`.
+For static linking, use `pkg-config --static --cflags --libs insightdock` and put source/object
+files before library flags on the linker command line.
 
 ## Platform support
 
@@ -239,7 +242,7 @@ In the repository: [docs/API.md](docs/API.md) (usage guide), [docs/BENCHMARKS.md
 
 ## Contributing
 
-Bug reports, feature requests and new chart types are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) first; this project follows a [Code of Conduct](CODE_OF_CONDUCT.md). Report security issues privately as described in [SECURITY.md](SECURITY.md).
+Bug reports, feature requests and new chart types are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) and [GOVERNANCE.md](GOVERNANCE.md); this project follows a [Code of Conduct](CODE_OF_CONDUCT.md). Report security issues privately as described in [SECURITY.md](SECURITY.md).
 
 ## License
 

@@ -27,7 +27,7 @@ struct DataLabelOptions {
   Color color = Color::gray(40);
   float font_size = 10.0f;
   DataLabelPosition position = DataLabelPosition::Auto;
-  /** Fixed decimal places, or -1 for auto (integer if whole, else 1 decimal place). */
+  /** Fixed decimal places (capped at 15), or -1 for automatic precision. */
   int decimals = -1;
   /** Reuses the same TickFormat semantics as CartesianChart's y-axis; ignored by PieChart. */
   TickFormat format = TickFormat::Raw;

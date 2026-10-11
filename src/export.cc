@@ -3,9 +3,9 @@
 
 #include "insightdock/export.h"
 
+#include "insightdock/detail/scaled_target.h"
 #include "insightdock/detail/svg_target.h"
 #ifdef INSIGHTDOCK_HAS_PIE
-#include "insightdock/detail/svg_pie.h"
 #include "insightdock/pie_chart.h"
 #endif
 #include "insightdock/png_writer.h"
@@ -13,14 +13,19 @@
 
 #ifdef INSIGHTDOCK_HAS_PODOFO
 #include "insightdock/pdf/podofo_adapter.h"
-#include "insightdock/pdf/podofo_vector.h"
+#include "insightdock/pdf/podofo_target.h"
 #include <podofo/podofo.h>
 #endif
 
 #include <algorithm>
 #include <cctype>
+#include <exception>
 #include <fstream>
+#ifdef _WIN32
+#include <filesystem>
+#endif
 #include <memory>
+#include <stdexcept>
 #include <string>
 
 namespace insightdock::charts {
@@ -51,45 +56,6 @@ bool use_pdf_vector(ExportOptions const &opts) {
 
 bool use_svg_vector(ExportOptions const &opts) {
   return opts.format == OutputFormat::Svg && opts.svg_backend == SvgBackend::Vector;
-}
-
-bool save_svg_vector_page(Chart const &chart, std::string const &path) {
-  if (path.empty())
-    return false;
-#ifdef INSIGHTDOCK_HAS_PIE
-  if (auto const *pie = dynamic_cast<PieChart const *>(&chart)) {
-    std::string xml = detail::build_pie_svg(*pie);
-    if (xml.empty())
-      return false;
-    std::ofstream out(path, std::ios::binary);
-    if (!out)
-      return false;
-    out << xml;
-    return static_cast<bool>(out);
-  }
-#endif
-  std::string xml = detail::build_chart_svg(chart);
-  if (!xml.empty()) {
-    std::ofstream out(path, std::ios::binary);
-    if (!out)
-      return false;
-    out << xml;
-    return static_cast<bool>(out);
-  }
-  return write_svg(path, chart.render()); // chart type without a vector path (scatter)
-}
-
-std::vector<uint8_t> encode_svg_vector_page(Chart const &chart) {
-#ifdef INSIGHTDOCK_HAS_PIE
-  if (auto const *pie = dynamic_cast<PieChart const *>(&chart)) {
-    std::string xml = detail::build_pie_svg(*pie);
-    return std::vector<uint8_t>(xml.begin(), xml.end());
-  }
-#endif
-  std::string xml = detail::build_chart_svg(chart);
-  if (!xml.empty())
-    return std::vector<uint8_t>(xml.begin(), xml.end());
-  return encode_svg(chart.render()); // chart type without a vector path (scatter)
 }
 
 class SupersampleScope {
@@ -151,14 +117,14 @@ constexpr int kMaxSupersample = 8;
 bool render_size_ok(Chart const &chart, ExportOptions const &opts) {
   std::size_t ss = static_cast<std::size_t>(std::clamp(opts.supersample, 1, kMaxSupersample));
   auto const &o = chart.options();
-  if (o.width > ImageBuffer::kMaxPixels || o.height > ImageBuffer::kMaxPixels)
+  if (o.width == 0 || o.height == 0 || o.width > ImageBuffer::kMaxPixels ||
+      o.height > ImageBuffer::kMaxPixels)
     return false;
   return ImageBuffer::dimensions_ok(o.width * ss, o.height * ss);
 }
 
 // Renders `chart` at the requested supersample factor. The caller's chart is never modified:
-// supersampling renders a scaled clone. (Custom subclasses without clone() fall back to
-// temporarily rewriting the original's options, which is not thread-safe.)
+// supersampling renders a scaled clone. Custom subclasses without clone() cannot supersample.
 ImageBuffer render_scaled(Chart const &chart, ExportOptions const &opts) {
   if (!render_size_ok(chart, opts))
     return ImageBuffer();
@@ -167,16 +133,25 @@ ImageBuffer render_scaled(Chart const &chart, ExportOptions const &opts) {
     return chart.render();
 
   std::unique_ptr<Chart> copy = chart.clone();
-  Chart &target = copy ? *copy : const_cast<Chart &>(chart);
+  if (!copy)
+    return ImageBuffer(); // a const custom chart must never be mutated by export
+  ImageBuffer high(chart.options().width * ss, chart.options().height * ss);
+  RasterTarget raster(high);
+  detail::ScaledTarget scaled(raster, static_cast<float>(ss));
+  if (copy->draw(scaled))
+    return ImageBuffer::downsample(high, ss);
+
+  // Compatibility path for custom charts that implement only render(). Their clone
+  // receives scaled common options; custom pixel styles remain their responsibility.
+  high = ImageBuffer();
+  Chart &target = *copy;
   SupersampleScope scope(target, ss);
   ImageBuffer img = target.render();
   return ImageBuffer::downsample(img, ss);
 }
 
 #ifdef INSIGHTDOCK_HAS_PODOFO
-bool save_pdf_page(ImageBuffer const &img, std::string const &path);
 std::vector<uint8_t> encode_pdf_page(ImageBuffer const &img);
-bool save_pdf_vector_page(Chart const &chart, std::string const &path);
 std::vector<uint8_t> encode_pdf_vector_page(Chart const &chart);
 
 void fit_box_on_a4(double aspect, double &x, double &y, double &w, double &h) {
@@ -197,30 +172,6 @@ void fit_box_on_a4(double aspect, double &x, double &y, double &w, double &h) {
   y = margin + (max_h - h) * 0.5;
 }
 #endif
-
-bool write_buffer(std::string const &path, ImageBuffer const &img, ExportOptions const &opts) {
-  switch (opts.format) {
-  case OutputFormat::Png:
-    return write_png(path, img);
-  case OutputFormat::Jpeg: {
-    int q = std::clamp(opts.jpeg_quality, 1, 100);
-    return write_jpeg(path, img, q);
-  }
-  case OutputFormat::Svg:
-    return write_svg(path, img);
-  case OutputFormat::PdfRaster:
-#ifdef INSIGHTDOCK_HAS_PODOFO
-    return save_pdf_page(img, path);
-#else
-    (void)path;
-    (void)img;
-    return false;
-#endif
-  case OutputFormat::PdfVector:
-    return false;
-  }
-  return false;
-}
 
 std::vector<uint8_t> encode_buffer(ImageBuffer const &img, ExportOptions const &opts) {
   switch (opts.format) {
@@ -267,20 +218,6 @@ void fit_chart_on_a4(ImageBuffer const &img, PoDoFo::PdfDocument &doc, PoDoFo::P
   podofo::draw_chart(doc, painter, img, x, y, draw_w, draw_h);
 }
 
-bool save_pdf_page(ImageBuffer const &img, std::string const &path) {
-  if (img.width() == 0 || img.height() == 0 || path.empty())
-    return false;
-
-  PoDoFo::PdfMemDocument doc;
-  PoDoFo::PdfPainter painter;
-  auto &page = doc.GetPages().CreatePage(PoDoFo::PdfPageSize::A4);
-  painter.SetCanvas(page);
-  fit_chart_on_a4(img, doc, painter, page);
-  painter.FinishDrawing();
-  doc.Save(path);
-  return true;
-}
-
 std::vector<uint8_t> encode_pdf_page(ImageBuffer const &img) {
   if (img.width() == 0 || img.height() == 0)
     return {};
@@ -298,26 +235,6 @@ std::vector<uint8_t> encode_pdf_page(ImageBuffer const &img) {
   return std::vector<uint8_t>(buffer.begin(), buffer.end());
 }
 
-bool save_pdf_vector_page(Chart const &chart, std::string const &path) {
-  if (path.empty() || chart.options().width == 0 || chart.options().height == 0)
-    return false;
-
-  PoDoFo::PdfMemDocument doc;
-  PoDoFo::PdfPainter painter;
-  auto &page = doc.GetPages().CreatePage(PoDoFo::PdfPageSize::A4);
-  painter.SetCanvas(page);
-
-  double x, y, w, h;
-  double aspect =
-      static_cast<double>(chart.options().width) / static_cast<double>(chart.options().height);
-  fit_box_on_a4(aspect, x, y, w, h);
-  podofo::draw_chart_vector(doc, painter, chart, x, y, w, h);
-
-  painter.FinishDrawing();
-  doc.Save(path);
-  return true;
-}
-
 std::vector<uint8_t> encode_pdf_vector_page(Chart const &chart) {
   if (chart.options().width == 0 || chart.options().height == 0)
     return {};
@@ -331,7 +248,14 @@ std::vector<uint8_t> encode_pdf_vector_page(Chart const &chart) {
   double aspect =
       static_cast<double>(chart.options().width) / static_cast<double>(chart.options().height);
   fit_box_on_a4(aspect, x, y, w, h);
-  podofo::draw_chart_vector(doc, painter, chart, x, y, w, h);
+  bool drawn;
+  {
+    podofo::PdfTarget target(doc, painter, static_cast<float>(chart.options().width),
+                             static_cast<float>(chart.options().height), x, y, w, h);
+    drawn = chart.draw(target);
+  }
+  if (!drawn)
+    return {}; // Caller chooses whether to retry as raster.
 
   painter.FinishDrawing();
   std::vector<char> buffer;
@@ -355,6 +279,15 @@ OutputFormat format_from_path(std::string const &path) {
   return OutputFormat::Png;
 }
 
+ExportCapabilities ChartExporter::capabilities(Chart const &chart) noexcept {
+  ExportCapabilities result;
+  result.vector = chart.vector_capability();
+#ifdef INSIGHTDOCK_HAS_PODOFO
+  result.pdf_available = true;
+#endif
+  return result;
+}
+
 ImageBuffer ChartExporter::render(Chart &chart, ExportOptions const &opts) {
   return render_scaled(chart, opts);
 }
@@ -364,6 +297,11 @@ ImageBuffer ChartExporter::render(Chart const &chart, ExportOptions const &opts)
 }
 
 ChartResult<void> ChartExporter::save(Chart &chart, std::string const &path, ExportOptions opts) {
+  return save(static_cast<Chart const &>(chart), path, opts);
+}
+
+ChartResult<void> ChartExporter::save(Chart const &chart, std::string const &path,
+                                      ExportOptions opts) {
   using R = ChartResult<void>;
   if (path.empty())
     return R::failure(ChartError::BadPath);
@@ -379,62 +317,103 @@ ChartResult<void> ChartExporter::save(Chart &chart, std::string const &path, Exp
   } else if (ext == "png")
     opts.format = OutputFormat::Png;
 
-#ifdef INSIGHTDOCK_HAS_PODOFO
-  if (use_pdf_vector(opts)) {
-    return save_pdf_vector_page(chart, path) ? R::success() : R::failure(ChartError::EncodeFailure);
-  }
+  auto encoded = encode(chart, opts);
+  if (!encoded)
+    return R::failure(encoded.error());
+  try {
+#ifdef _WIN32
+    std::ofstream out(std::filesystem::u8path(path), std::ios::binary);
 #else
-  if (use_pdf_vector(opts))
-    return R::failure(ChartError::PdfUnsupported);
+    std::ofstream out(path, std::ios::binary);
 #endif
-
-  if (use_svg_vector(opts)) {
-    return save_svg_vector_page(chart, path) ? R::success() : R::failure(ChartError::EncodeFailure);
+    if (!out)
+      return R::failure(ChartError::BadPath);
+    out.write(reinterpret_cast<char const *>(encoded.value.data()),
+              static_cast<std::streamsize>(encoded.value.size()));
+    out.close(); // include flush/close failures in the result
+    return out ? R::success() : R::failure(ChartError::BadPath);
+  } catch (std::exception const &) {
+    return R::failure(ChartError::BadPath);
   }
-
-  if (!render_size_ok(chart, opts))
-    return R::failure(ChartError::InvalidInput);
-  ImageBuffer img = render_scaled(chart, opts);
-  if (img.width() == 0 || img.height() == 0)
-    return R::failure(ChartError::RenderFailure);
-
-  return write_buffer(path, img, opts) ? R::success() : R::failure(ChartError::EncodeFailure);
 }
 
 ChartResult<std::vector<uint8_t>> ChartExporter::encode(Chart &chart, ExportOptions const &opts) {
-  using R = ChartResult<std::vector<uint8_t>>;
+  return encode(static_cast<Chart const &>(chart), opts);
+}
 
-#ifdef INSIGHTDOCK_HAS_PODOFO
-  if (use_pdf_vector(opts)) {
-    auto bytes = encode_pdf_vector_page(chart);
-    return bytes.empty() ? R::failure(ChartError::EncodeFailure) : R::success(std::move(bytes));
-  }
-#else
-  if (use_pdf_vector(opts))
+ChartResult<std::vector<uint8_t>> ChartExporter::encode(Chart const &chart,
+                                                        ExportOptions const &opts) {
+  using R = ChartResult<std::vector<uint8_t>>;
+  bool vector_output = use_pdf_vector(opts) || use_svg_vector(opts);
+  ExportOptions size_opts = opts;
+  if (vector_output)
+    size_opts.supersample = 1;
+  if (!render_size_ok(chart, size_opts))
+    return R::failure(ChartError::InvalidInput);
+#ifndef INSIGHTDOCK_HAS_PODOFO
+  if (opts.format == OutputFormat::PdfRaster || opts.format == OutputFormat::PdfVector)
     return R::failure(ChartError::PdfUnsupported);
 #endif
 
-  if (use_svg_vector(opts)) {
-    auto bytes = encode_svg_vector_page(chart);
-    return bytes.empty() ? R::failure(ChartError::EncodeFailure) : R::success(std::move(bytes));
+  try {
+#ifdef INSIGHTDOCK_HAS_PODOFO
+    if (use_pdf_vector(opts)) {
+      auto bytes = encode_pdf_vector_page(chart);
+      if (!bytes.empty())
+        return R::success(std::move(bytes));
+    }
+#endif
+    if (use_svg_vector(opts)) {
+      std::string xml = detail::build_chart_svg(chart);
+      if (!xml.empty())
+        return R::success(std::vector<uint8_t>(xml.begin(), xml.end()));
+    }
+  } catch (std::exception const &) {
+    return R::failure(ChartError::EncodeFailure);
   }
 
-  if (!render_size_ok(chart, opts))
+  if (vector_output && opts.vector_fallback == VectorFallback::Reject)
+    return R::failure(ChartError::VectorUnsupported);
+
+  // A vector request declined by draw() uses the same quality and size checks as an explicit
+  // raster request. Discard any partial vector drawing before encoding the image.
+  ExportOptions raster_opts = opts;
+  if (use_pdf_vector(opts))
+    raster_opts.format = OutputFormat::PdfRaster;
+  if (!render_size_ok(chart, raster_opts))
     return R::failure(ChartError::InvalidInput);
-  ImageBuffer img = render_scaled(chart, opts);
+
+  ImageBuffer img;
+  try {
+    img = render_scaled(chart, raster_opts);
+  } catch (std::exception const &) {
+    return R::failure(ChartError::RenderFailure);
+  }
   if (img.width() == 0 || img.height() == 0)
     return R::failure(ChartError::RenderFailure);
-
-  auto bytes = encode_buffer(img, opts);
-  return bytes.empty() ? R::failure(ChartError::EncodeFailure) : R::success(std::move(bytes));
+  try {
+    auto bytes = encode_buffer(img, raster_opts);
+    return bytes.empty() ? R::failure(ChartError::EncodeFailure) : R::success(std::move(bytes));
+  } catch (std::exception const &) {
+    return R::failure(ChartError::EncodeFailure);
+  }
 }
 
 #ifdef INSIGHTDOCK_HAS_PODOFO
 
 void ChartExporter::draw_pdf_vector(PoDoFo::PdfDocument &doc, PoDoFo::PdfPainter &painter,
                                     Chart const &chart, double x, double y, double w, double h,
-                                    ExportOptions const &) {
-  podofo::draw_chart_vector(doc, painter, chart, x, y, w, h);
+                                    ExportOptions const &opts) {
+  {
+    auto const &o = chart.options();
+    podofo::PdfTarget target(doc, painter, static_cast<float>(o.width),
+                             static_cast<float>(o.height), x, y, w, h);
+    if (chart.draw(target))
+      return;
+  }
+  if (opts.vector_fallback == VectorFallback::Reject)
+    throw std::runtime_error(chart_error_message(ChartError::VectorUnsupported));
+  podofo::draw_chart(doc, painter, render_scaled(chart, opts), x, y, w, h);
 }
 
 void ChartExporter::draw_pdf(PoDoFo::PdfDocument &doc, PoDoFo::PdfPainter &painter,

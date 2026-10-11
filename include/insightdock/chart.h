@@ -24,6 +24,13 @@
 
 namespace insightdock::charts {
 
+/** @brief Advertised support for native drawing, without rendering the chart. */
+enum class VectorCapability {
+  Unknown,    ///< Custom chart has not declared support; export probes draw().
+  RasterOnly, ///< Chart renders only to an image.
+  Native,     ///< Chart implements native drawing through DrawTarget.
+};
+
 /** @brief Padding around the chart plot area, in pixels. */
 struct Margins {
   float top = 48.0f;    ///< Top margin (title, legend).
@@ -32,7 +39,13 @@ struct Margins {
   float left = 64.0f;   ///< Left margin (y-axis labels).
 };
 
-/** @brief Legend placement and visibility. */
+/**
+ * @brief Legend placement and visibility.
+ *
+ * Labels wrap into measured rows (Top/Bottom) or a column up to one third of the canvas width
+ * (Right). Legends use at most one third of the canvas height; excess entries become a
+ * +N more count. Data remains visible. Enlarge the canvas or shorten labels to show more entries.
+ */
 struct LegendOptions {
   bool enabled = true; ///< When false, legend is not drawn.
   /** @brief Where to draw the legend relative to the plot. */
@@ -126,9 +139,20 @@ public:
   virtual ImageBuffer render() const = 0;
 
   /**
+   * @brief Native drawing support advertised by this chart.
+   *
+   * Custom charts may override this for capability queries. Unknown preserves compatibility
+   * with existing draw() overrides. Export always checks draw()'s actual return value, including
+   * when strict vector output is requested; this declaration is not a validation guarantee.
+   */
+  virtual VectorCapability vector_capability() const noexcept {
+    return VectorCapability::Unknown;
+  }
+
+  /**
    * @brief Draw the chart into an arbitrary @ref DrawTarget (raster, SVG, PDF).
    * @return `false` (default) if this chart type has no target-based drawing path; callers then
-   *         fall back to @ref render(). All Cartesian charts (bar, line, area, combo) return true.
+   *         fall back to @ref render(). All built-in charts return true.
    */
   virtual bool draw(DrawTarget &target) const {
     (void)target;
@@ -139,10 +163,10 @@ public:
    * @brief Deep copy of this chart, or `nullptr` if the concrete type doesn't support it.
    *
    * All built-in chart types override this. @ref ChartExporter uses it to render supersampled
-   * output from a scaled copy, so exporting never mutates the chart you pass in (and concurrent
-   * exports of one chart are safe). Custom subclasses should override it the same way:
-   * `return std::make_unique<MyChart>(*this);`. Without an override, supersampled export falls
-   * back to temporarily rewriting the chart's options, which is not thread-safe.
+   * output from a copy through a scaled drawing target, so exporting never mutates the chart you
+   * pass in (and concurrent exports of one chart are safe). Custom subclasses should override it
+   * the same way: `return std::make_unique<MyChart>(*this);`. Without an override, supersampled
+   * rendering returns an empty buffer and save()/encode() report RenderFailure.
    */
   virtual std::unique_ptr<Chart> clone() const {
     return nullptr;

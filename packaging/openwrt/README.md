@@ -1,7 +1,7 @@
 # OpenWrt packaging sample
 
 `Makefile` here is a standard OpenWrt feed package definition (the same shape as any
-[package/libs](https://github.com/openwrt/packages/tree/master/libs) entry) for InsightDock's
+[package/libs](https://github.com/openwrt/packages/tree/master/libs) entry) for InsightDock Charts'
 size-trimmed core build. It is not built by this repository's own CI — it is a starting point for
 your own feed.
 
@@ -24,7 +24,7 @@ Then edit the copy:
 
 ## Why the plain Makefile, not CMake
 
-InsightDock ships two build paths (see the root [README](../../README.md)): a CMake build for
+InsightDock Charts ships two build paths (see the root [README](../../README.md)): a CMake build for
 desktop/server use, and a dependency-free plain `Makefile` with `CHART_TYPES` / `EXPORT_FORMATS` /
 `FONT_MODE` knobs for trimming the compiled library down for size-constrained targets. The OpenWrt
 package builds via the plain `Makefile`, since that's the path with the actual size-trimming

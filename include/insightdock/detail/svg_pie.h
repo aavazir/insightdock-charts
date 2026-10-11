@@ -10,10 +10,7 @@
 
 namespace insightdock::charts::detail {
 
-// Native SVG <path>/<text> rendering for PieChart — sectors as circular arcs,
-// external labels with leader lines, and a legend. Used by ChartExporter when
-// ExportOptions::svg_backend == SvgBackend::Vector. Other chart types fall
-// back to the raster-embed SVG writer (src/svg_writer.cc).
+// Compatibility wrapper for build_chart_svg; pie geometry and labels come from PieChart::draw.
 INSIGHTDOCK_API std::string build_pie_svg(PieChart const &chart);
 
 } // namespace insightdock::charts::detail

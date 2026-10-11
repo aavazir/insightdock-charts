@@ -22,9 +22,14 @@ INSIGHTDOCK_API std::string
 format_tick_value(double v, TickFormat format,
                   std::function<std::string(double)> const &custom_formatter);
 
+/** @brief Formats an axis tick using its spacing to select decimal precision for Raw values. */
+INSIGHTDOCK_API std::string
+format_axis_tick(double v, double spacing, TickFormat format,
+                 std::function<std::string(double)> const &custom_formatter);
+
 /**
  * @brief Formats a data-label value.
- * @param decimals Fixed decimal places, or -1 for auto (integer if whole, else 1 decimal).
+ * @param decimals Fixed decimal places (capped at 15), or -1 for automatic precision.
  *
  * Delegates to format_tick_value() for TickFormat semantics when @p decimals is auto;
  * PieChart (which has no TickFormat concept of its own) can still call this with

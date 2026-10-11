@@ -5,8 +5,8 @@
 // DejaVu Sans is derived from Bitstream Vera and distributed under a permissive,
 // embeddable/redistributable license (see NOTICE) that explicitly permits this.
 // Regenerate with:
-//   pyftsubset DejaVuSans.ttf --output-file=subset.ttf --unicodes="U+0020-007E" \
-//     --layout-features='' --no-hinting --desubroutinize --name-IDs='' \
+//   pyftsubset DejaVuSans.ttf --output-file=subset.ttf --unicodes="U+0020-007E"
+//     --layout-features='' --no-hinting --desubroutinize --name-IDs=''
 //     --drop-tables+=GSUB,GPOS,GDEF,DSIG,vhea,vmtx --notdef-outline
 
 #ifndef INSIGHTDOCK_CHARTS_EMBEDDED_FONT_H

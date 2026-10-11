@@ -58,9 +58,29 @@ chart.set_categories({"Q1\n2024", "Q2\n2024"});
 ```
 
 Each line is centred on its own width, and the title / label margins grow to fit. Y-axis
-titles and legend entries are single-line.
+titles are single-line. Legend entries support explicit newlines and automatic wrapping.
 
 ## Colorblind-safe palette
 
 `chart.options().palette = PaletteKind::ColorblindSafe;` selects the 8-colour Okabe–Ito palette
 for series added afterwards without an explicit color (set it before `add_series`).
+
+## Legend layout and overflow
+
+Pie, Cartesian and scatter/bubble legends measure labels with the chart font. Top and bottom
+legends pack entries into centered rows with 10 pixels of canvas padding on each side. Right
+legends reserve their measured width, up to one third of the canvas, and wrap longer labels.
+Each legend uses at most one third of the canvas height. Explicit newlines preserve empty lines;
+long tokens split between UTF-8 code points.
+
+Entries appear in insertion order. When the complete legend exceeds that height, whole trailing
+entries are replaced by a `+N more` count. The chart still renders their data. Increase the canvas
+size, shorten labels or disable the legend to show more data without a summary. If even the count
+cannot fit (for example, on a very narrow canvas with a large font), the overflow indicator is omitted.
+An individual code point wider than the available label width also triggers overflow.
+
+Automatic pie centers and radii reserve room for the title and legend at render time, including
+when dimensions change after `set_pie_options()`. Explicit coordinates and radii remain caller
+controlled. Pie callout collisions and arbitrary axis/label collisions still need manual tuning.
+The same measured legend layout drives PNG, SVG and PDF chart exports; scatter/bubble currently
+uses raster fallback for vector exports, and the legacy PDF pie report helpers use their own layout.

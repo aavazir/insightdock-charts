@@ -27,11 +27,12 @@ namespace insightdock::charts {
 /** @brief Reason a chart export operation failed. */
 enum class ChartError {
   None = 0,
-  BadPath,        ///< Empty or unwritable file path.
-  RenderFailure,  ///< Chart rendered to a zero-size buffer (no data, zero dimensions).
-  EncodeFailure,  ///< PNG / JPEG / PDF encoder returned an error.
-  PdfUnsupported, ///< PDF output requested but library built without INSIGHTDOCK_WITH_PODOFO.
-  InvalidInput,   ///< Malformed input (no slices, mismatched series lengths, etc.).
+  BadPath,           ///< Empty or unwritable file path.
+  RenderFailure,     ///< Chart rendered to a zero-size buffer (no data, zero dimensions).
+  EncodeFailure,     ///< PNG / JPEG / PDF encoder returned an error.
+  PdfUnsupported,    ///< PDF output requested but library built without INSIGHTDOCK_WITH_PODOFO.
+  InvalidInput,      ///< Malformed input (no slices, mismatched series lengths, etc.).
+  VectorUnsupported, ///< Strict native vector output requested but draw() returned false.
 };
 
 /** @brief Human-readable description of a @ref ChartError code. */
@@ -49,6 +50,8 @@ inline char const *chart_error_message(ChartError e) noexcept {
     return "PDF output requires INSIGHTDOCK_WITH_PODOFO build";
   case ChartError::InvalidInput:
     return "invalid chart input (no data or bad dimensions)";
+  case ChartError::VectorUnsupported:
+    return "chart does not support native vector output";
   }
   return "unknown error";
 }

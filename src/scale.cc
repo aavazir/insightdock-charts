@@ -216,6 +216,9 @@ Scale Scale::linear_nice(double data_min, double data_max, float pixel_min, floa
       std::swap(data_min, data_max);
     }
   }
+  // Keep the actual lower extent: padding may cross zero, but begin-at-zero charts should
+  // retain zero when it is already a valid tick. Rounding must never exclude input values.
+  double lower_extent = data_min;
   double range = data_max - data_min;
   double padding = range * 0.05;
   if (padding == 0.0)
@@ -228,6 +231,11 @@ Scale Scale::linear_nice(double data_min, double data_max, float pixel_min, floa
   if (!ticks.empty()) {
     double nice_min = ticks.front();
     double nice_max = ticks.back();
+    if (nice_min > lower_extent && ticks.size() >= 2) {
+      double step = ticks[1] - ticks[0];
+      for (int i = 0; i < kMaxTicks && step > 0.0 && nice_min > lower_extent; ++i)
+        nice_min -= step;
+    }
     // If ticks stop short of data_max, extend by one step so the peak data
     // point sits between two labelled gridlines rather than above the last one.
     if (nice_max < data_max && ticks.size() >= 2) {
@@ -235,7 +243,8 @@ Scale Scale::linear_nice(double data_min, double data_max, float pixel_min, floa
       for (int i = 0; i < kMaxTicks && step > 0.0 && nice_max < data_max; ++i)
         nice_max += step;
     }
-    s.set_domain(nice_min, nice_max);
+    // With a one-tick hint there is no spacing to extend; keep the enclosing extent.
+    s.set_domain(std::min(nice_min, lower_extent), std::max(nice_max, data_max));
   }
   return s;
 }

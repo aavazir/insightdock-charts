@@ -6,6 +6,98 @@ Format based on [Keep a Changelog](https://keepachangelog.com/). Versioning foll
 
 ## [Unreleased]
 
+### Added
+
+- `ChartExporter::capabilities()` queries advertised native drawing support and compiled PDF
+  availability without rendering. Built-in charts declare `VectorCapability::Native`; custom
+  charts default to `Unknown` and may override `vector_capability()`.
+- `VectorFallback::Reject` requires native SVG/PDF output: `save()`/`encode()` return
+  `ChartError::VectorUnsupported` when `draw()` declines, without rasterizing or replacing the
+  destination file. Existing custom draw overrides continue to work. Void PDF embedding APIs
+  throw `std::runtime_error` on strict rejection.
+- Const `ChartExporter::save()` / `encode()` overloads, with documented exception contracts and
+  installed-consumer/concurrent-export coverage.
+
+### Fixed
+
+- Documentation and public display names consistently use InsightDock Charts for C++ or
+  InsightDock Charts. Existing API identifiers and package names retain their spelling.
+
+- Allowed custom-chart vector fallback now uses the regular raster supersampling, clone and
+  allocation checks. Raster fallback render failures return `RenderFailure`; partial standalone
+  vector output is discarded.
+
+- Supersampled raster exports preserve logical layout and scale all drawing primitives, including
+  line widths, dash lengths, marker/bubble radii, rounded corners, borders, leader lines and
+  independently sized data labels. Fonts retain their original TTF data. Exporting still uses a
+  clone and does not change the caller's chart. Custom render-only charts retain the legacy path.
+- Raster thick strokes now fill their interior with distance-based edge coverage instead of
+  sparse parallel traces; translucent interiors blend once per segment. Gallery references
+  reflect the corrected strokes.
+- Scatter/bubble now draw through `DrawTarget`, enabling consistent supersampling and native
+  SVG/PDF shapes and text instead of raster fallback.
+
+- Pie callouts now use measured columns with vertical spacing, reserved title/legend areas and
+  leaders routed outside the circle. Automatic radii reserve label width. Overfull columns keep
+  larger slices first with stable input-order ties; blocks that cannot fit are omitted in full.
+  Slice geometry and legend visibility remain independent of callout omission.
+
+- Linear nice axes now enclose the lower data extent as well as the upper extent, including
+  one-tick hints. Positive scatter data no longer rounds inward and appears in the axis/legend
+  margins; zero-based chart domains retain their zero baseline.
+
+- Pie, Cartesian and scatter/bubble legends measure individual entries, wrap labels/newlines,
+  reserve right margins and pack top/bottom rows. Legends use at most one third of the canvas
+  height and summarize excess entries as `+N more`; their data stays visible. Scatter Top legends
+  now render above the plot. Secondary-axis titles remain beside the axis with a right legend.
+- Automatic pie center/radius options stay unresolved until rendering, reserving space for the
+  title and legend and adapting to later canvas size changes. Existing gallery references updated
+  for measured legend placement and automatic pie geometry.
+
+- Pie chart exports now share geometry and text wrapping through `DrawTarget`, preserving explicit
+  colors, alpha, strokes, gaps, legends, titles and in-slice labels in native SVG/PDF output.
+  UTF-8 token wrapping preserves code points and labels longer than 159 bytes are no longer truncated.
+- Pie proportions normalize large finite values before summing; negative values count as zero.
+  Fill opacity is clamped and multiplies the slice color alpha. Fully consumed gaps leave no stray
+  geometry. Pie percentage labels and SVG coordinates ignore process locale.
+- Legacy PDF report label wrapping also preserves UTF-8, and hidden small labels no longer shift
+  subsequent callout angles.
+- DateTime ticks now use UTC with checked timestamp conversion; Raw labels preserve fractions
+  and value axes choose precision from tick spacing. Numeric tick/data labels ignore process locale.
+- Top Cartesian legends render above the plot; category truncation removes whole UTF-8 code points.
+- Exporters report failed writes as `BadPath`, catch rendering/encoding exceptions, reject oversized
+  vector dimensions and report unavailable raster/vector PDF as `PdfUnsupported`. Custom charts
+  without `clone()` fail supersampling without modifying const input.
+- Font files exceeding 64 MiB are rejected before their contents are allocated/read.
+- Installed CMake targets advertise C++17. pkg-config metadata is relocatable and includes feature
+  definitions and the optional `libpodofo` dependency. Third-party headers no longer trigger
+  unused-function diagnostics in strict core builds.
+
+### Added
+
+- `PieChart::draw()` and a default `DrawTarget::fill_sector()` implementation for existing custom
+  targets. The doughnut example exports PNG, native SVG and optional native PDF.
+- `CartesianOptions::custom_x_formatter` for continuous DateTime tick presentation.
+- Reliability regressions run in UTC, Karachi and New York process timezones.
+- PDF CI job pinned to PoDoFo revision `00f86c8ad7b78430b25ad2c81edb704ae8daa6ea`, with report
+  examples and an installed PDF-enabled consumer.
+- Governance/acceptance guidance, corrected security trust boundaries, and bundled font license
+  notices installed with the library. Roadmap reconciled with implemented features and expanded
+  with reliability, axes/layout, analytics, accessibility and ecosystem milestones.
+
+### Changed
+
+- Default vector PDF pie exports now use the chart's raster/SVG layout, including its background
+  and title. The explicit `PieVectorOptions` overload of `podofo::draw_chart_vector()` and the
+  `draw_pie()` / `draw_pie_slices()` helpers retain the separate PDF report layout.
+- `SOVERSION` tracks `major.minor` at all versions to match the documented ABI policy. Rebuild
+  applications when upgrading between minor releases; patch releases must preserve ABI.
+- CMake examples/tests default off when InsightDock Charts is included as a subdirectory.
+- Date labels previously formatted in the machine's local timezone now default to UTC. Regenerate
+  affected output baselines or supply a custom formatter for another timezone.
+- Refresh the time-series gallery baseline for UTC labels.
+
+
 ## [1.0.0-rc1] — 2026-10-02 — first public release candidate
 
 Release candidate for 1.0. The API is frozen for the feedback window except for fixes to problems found by outside users. Binary compatibility is not promised, only source compatibility.
@@ -169,7 +261,7 @@ Release candidate for 1.0. The API is frozen for the feedback window except for 
 
 ### Added
 
-- **InsightDock rebrand:** namespace `insightdock::charts`, headers under `include/insightdock/`
+- **InsightDock Charts rebrand:** namespace `insightdock::charts`, headers under `include/insightdock/`
 - Umbrella header `insightdock/charts.h` and PDF header `insightdock/pdf/podofo.h`
 - CMake project `InsightDockCharts`, target `InsightDock::Charts`, `find_package(InsightDock)`
 - CI pipeline (core build + CTest)
@@ -181,7 +273,7 @@ Release candidate for 1.0. The API is frozen for the feedback window except for 
 
 ### Changed
 
-- Generic examples use InsightDock naming
+- Generic examples use InsightDock Charts naming
 - PoDoFo generated include dirs are `PRIVATE` on the library target
 - Makefile produces `libInsightDockCharts.a`
 

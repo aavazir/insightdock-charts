@@ -5,7 +5,7 @@
  * @file podofo.h
  * @brief Umbrella header for PoDoFo PDF integration.
  *
- * Requires building InsightDock with `INSIGHTDOCK_WITH_PODOFO=ON` and linking PoDoFo.
+ * Requires building InsightDock Charts with `INSIGHTDOCK_WITH_PODOFO=ON` and linking PoDoFo.
  * Defines `INSIGHTDOCK_HAS_PODOFO` when PDF support is available.
  *
  * @namespace insightdock::charts::podofo

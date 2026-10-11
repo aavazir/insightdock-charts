@@ -2,7 +2,8 @@
 cmake_minimum_required(VERSION 3.14)
 project(InsightDockConsumer LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 17)
+# Intentionally request an older standard: the imported target must raise this to C++17.
+set(CMAKE_CXX_STANDARD 11)
 find_package(InsightDock REQUIRED)
 
 add_executable(consumer main.cc)

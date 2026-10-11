@@ -1,14 +1,13 @@
 cmake_minimum_required(VERSION 3.14)
 project(InsightDockCharts VERSION 1.0.0 LANGUAGES CXX)
 
-if(PROJECT_VERSION_MAJOR EQUAL 0)
-  set(INSIGHTDOCK_SOVERSION "${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}")
-else()
-  set(INSIGHTDOCK_SOVERSION "${PROJECT_VERSION_MAJOR}")
-endif()
+# Minor releases may change public struct layouts; give each minor a distinct shared identity.
+set(INSIGHTDOCK_SOVERSION "${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}")
 
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(INSIGHTDOCK_STANDALONE OFF)
+if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
+  set(INSIGHTDOCK_STANDALONE ON)
+endif()
 
 # Export compile_commands.json for clangd and MrDocs (docs/mrdocs.yml)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -21,9 +20,9 @@ if(WIN32 AND NOT CMAKE_RUNTIME_OUTPUT_DIRECTORY)
   set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 endif()
 
-option(INSIGHTDOCK_BUILD_EXAMPLES "Build generic example programs" ON)
+option(INSIGHTDOCK_BUILD_EXAMPLES "Build generic example programs" ${INSIGHTDOCK_STANDALONE})
 option(INSIGHTDOCK_WITH_PODOFO "Build PoDoFo PDF adapter and PDF examples" OFF)
-option(INSIGHTDOCK_BUILD_TESTS "Build and register CTest smoke tests" ON)
+option(INSIGHTDOCK_BUILD_TESTS "Build and register CTest tests" ${INSIGHTDOCK_STANDALONE})
 option(INSIGHTDOCK_BUILD_BENCHMARKS "Build the std::chrono render benchmark harness" OFF)
 option(INSIGHTDOCK_FONT_LATIN "Embed a Latin-1/Latin-Extended-A font subset (~22 KB) instead of the ASCII-only one" OFF)
 option(INSIGHTDOCK_WERROR "Treat warnings as errors" OFF)
@@ -62,6 +61,7 @@ endif()
 
 add_library(InsightDockCharts ${INSIGHTDOCK_SOURCES})
 add_library(InsightDock::Charts ALIAS InsightDockCharts)
+target_compile_features(InsightDockCharts PUBLIC cxx_std_17)
 
 # Output filename is libinsightdock; the CMake target name, InsightDock::Charts
 # alias, and insightdock::charts namespace/headers are unaffected by this override.
@@ -73,9 +73,9 @@ set_target_properties(InsightDockCharts PROPERTIES
   OUTPUT_NAME insightdock
   EXPORT_NAME Charts
   VERSION ${PROJECT_VERSION}
-  # ABI policy: source-compatible only across releases. SOVERSION tracks major.minor while the
-  # major is 0, then the major alone from 1.0 (a new minor may change the ABI before 1.0).
+  # Source compatibility is separate from ABI: minor releases may change public struct layouts.
   SOVERSION ${INSIGHTDOCK_SOVERSION}
+  CXX_EXTENSIONS OFF
   CXX_VISIBILITY_PRESET hidden
   VISIBILITY_INLINES_HIDDEN ON
 )
@@ -99,7 +99,7 @@ target_include_directories(InsightDockCharts PUBLIC
   $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 
-target_include_directories(InsightDockCharts PRIVATE
+target_include_directories(InsightDockCharts SYSTEM PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/third_party
 )
 
@@ -157,9 +157,20 @@ install(FILES
   DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/InsightDock
 )
 
-# pkg-config support for Meson / plain-Makefile consumers that don't use CMake's
-# find_package(). CMAKE_INSTALL_FULL_* resolves to absolute paths regardless of
-# whether CMAKE_INSTALL_PREFIX is set at configure time or overridden at install time.
+# Resolve paths from the .pc file's installed location, including --install --prefix relocation.
+file(RELATIVE_PATH INSIGHTDOCK_PC_LIBDIR
+  "${CMAKE_INSTALL_FULL_LIBDIR}/pkgconfig" "${CMAKE_INSTALL_FULL_LIBDIR}")
+file(RELATIVE_PATH INSIGHTDOCK_PC_INCLUDEDIR
+  "${CMAKE_INSTALL_FULL_LIBDIR}/pkgconfig" "${CMAKE_INSTALL_FULL_INCLUDEDIR}")
+set(INSIGHTDOCK_PC_DEFINITIONS "-DINSIGHTDOCK_HAS_PIE=1")
+if(NOT BUILD_SHARED_LIBS)
+  string(APPEND INSIGHTDOCK_PC_DEFINITIONS " -DINSIGHTDOCK_STATIC=1")
+endif()
+set(INSIGHTDOCK_PC_REQUIRES "")
+if(INSIGHTDOCK_WITH_PODOFO)
+  string(APPEND INSIGHTDOCK_PC_DEFINITIONS " -DINSIGHTDOCK_HAS_PODOFO=1")
+  set(INSIGHTDOCK_PC_REQUIRES "libpodofo")
+endif()
 configure_file(
   "${CMAKE_CURRENT_SOURCE_DIR}/cmake/insightdock.pc.in"
   "${CMAKE_CURRENT_BINARY_DIR}/insightdock.pc"
@@ -168,6 +179,9 @@ configure_file(
 install(FILES "${CMAKE_CURRENT_BINARY_DIR}/insightdock.pc"
   DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig
 )
+
+install(FILES LICENSE NOTICE DESTINATION ${CMAKE_INSTALL_DATADIR}/insightdock)
+install(DIRECTORY LICENSES DESTINATION ${CMAKE_INSTALL_DATADIR}/insightdock)
 
 if(INSIGHTDOCK_BUILD_EXAMPLES)
   add_executable(example_main examples/main.cc)

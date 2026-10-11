@@ -1,11 +1,10 @@
-prefix=@CMAKE_INSTALL_PREFIX@
-exec_prefix=${prefix}
-libdir=@CMAKE_INSTALL_FULL_LIBDIR@
-includedir=@CMAKE_INSTALL_FULL_INCLUDEDIR@
+libdir=${pcfiledir}/@INSIGHTDOCK_PC_LIBDIR@
+includedir=${pcfiledir}/@INSIGHTDOCK_PC_INCLUDEDIR@
 
-Name: InsightDock
+Name: InsightDock Charts for C++
 Description: MIT-licensed C++17 charting library (pie, bar, line, area, combo, scatter/bubble; PNG/JPEG/SVG/PDF export)
 URL: https://github.com/aavazir/insightdock-charts
 Version: @PROJECT_VERSION@
+Requires: @INSIGHTDOCK_PC_REQUIRES@
 Libs: -L${libdir} -linsightdock
-Cflags: -I${includedir} -std=c++17
+Cflags: -I${includedir} -std=c++17 @INSIGHTDOCK_PC_DEFINITIONS@

@@ -1,6 +1,6 @@
 # Documentation strategy
 
-InsightDock uses the same approach as modern C++ open-source libraries in 2025–2026:
+InsightDock Charts uses the same approach as modern C++ open-source libraries in 2025–2026:
 
 | Layer | Tool | Role |
 |-------|------|------|
@@ -16,7 +16,7 @@ Doxygen remains widely deployed (Qt, LLVM docs history, many libraries), but **n
 - **MrDocs** — C++ Alliance, Clang/LLVM, presented at CppCon 2025, actively developed
 - **hdoc** — compiler-based, Doxygen-comment compatible (another modern option)
 
-InsightDock standardizes on **MrDocs for API reference** because it matches current C++ community direction while our existing header comments stay valid.
+InsightDock Charts standardizes on **MrDocs for API reference** because it matches current C++ community direction while our existing header comments stay valid.
 
 Comment syntax stays **Doxygen-compatible** so tools agree: MrDocs, hdoc, Doxygen, and IDE hover all read the same `@brief` / `@param` blocks.
 

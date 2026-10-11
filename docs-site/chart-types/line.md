@@ -106,3 +106,18 @@ See `examples/time_series_line_example.cc` (full source in [Examples](../example
 complete 100-point-to-25-point walkthrough, and
 [Bar → Shared CartesianOptions](bar.md#shared-cartesianoptions) for the equivalent y-axis density
 controls (`min_y_labels`/`max_y_labels`), which apply here identically.
+
+## Date formatting
+
+Continuous DateTime ticks use UTC by default (`YYYY-MM-DD HH:MM`), independent of the
+process timezone. Supply `custom_x_formatter` for your display format or timezone; the callback
+receives the original Unix timestamp:
+
+```cpp
+line.cartesian_options().custom_x_formatter = [](double timestamp) {
+  return std::to_string(static_cast<long long>(timestamp)) + " UTC seconds";
+};
+```
+
+Raw numeric value ticks preserve fractions and select decimal precision from tick spacing.
+Invalid/out-of-range timestamps produce an empty default label.

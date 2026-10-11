@@ -27,9 +27,19 @@ int main() {
   po.data_labels.format = TickFormat::Percent;
   pie.set_pie_options(po);
 
-  ImageBuffer img = pie.render();
-  if (write_png("pie_doughnut.png", img))
-    std::cout << "Wrote pie_doughnut.png\n";
+  ExportOptions output;
+  if (!ChartExporter::save(pie, "pie_doughnut.png", output))
+    return 1;
+  output.svg_backend = SvgBackend::Vector;
+  if (!ChartExporter::save(pie, "pie_doughnut.svg", output))
+    return 1;
+  std::cout << "Wrote pie_doughnut.png and pie_doughnut.svg\n";
+#ifdef INSIGHTDOCK_HAS_PODOFO
+  output.pdf_backend = PdfBackend::Vector;
+  if (!ChartExporter::save(pie, "pie_doughnut.pdf", output))
+    return 1;
+  std::cout << "Wrote pie_doughnut.pdf\n";
+#endif
 
   return 0;
 }

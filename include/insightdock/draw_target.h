@@ -17,7 +17,7 @@
 namespace insightdock::charts {
 
 /**
- * @brief Pixel-space drawing surface that cartesian charts render into.
+ * @brief Pixel-space drawing surface shared by all built-in charts.
  *
  * Coordinates are in chart pixels with the origin at the top-left and y growing downwards.
  * The same chart code drives every output: @ref RasterTarget paints an @ref ImageBuffer,
@@ -45,6 +45,14 @@ public:
   /** @brief Fill a polygon (area charts rely on concave polygons being filled correctly). */
   virtual void fill_polygon(Point const *points, std::size_t count, Color const &color) = 0;
   virtual void fill_circle(float cx, float cy, float radius, Color const &color) = 0;
+  /**
+   * @brief Fill a clockwise circular sector; angles are radians from the positive x-axis.
+   *
+   * The default implementation tessellates into a polygon, so existing custom targets need
+   * no new override. Raster and SVG targets use their native sector primitives.
+   */
+  virtual void fill_sector(float cx, float cy, float radius, double start, double end,
+                           Color const &color);
 
   virtual void draw_line(float x0, float y0, float x1, float y1, float width,
                          Color const &color) = 0;
@@ -88,6 +96,8 @@ public:
                          Color const &color) override;
   void fill_polygon(Point const *points, std::size_t count, Color const &color) override;
   void fill_circle(float cx, float cy, float radius, Color const &color) override;
+  void fill_sector(float cx, float cy, float radius, double start, double end,
+                   Color const &color) override;
   void draw_line(float x0, float y0, float x1, float y1, float width, Color const &color) override;
   void draw_polyline(Point const *points, std::size_t count, float width,
                      Color const &color) override;

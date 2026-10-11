@@ -2,6 +2,7 @@
 // Copyright (c) InsightDock contributors
 
 #include "insightdock/scatter_chart.h"
+#include "insightdock/detail/legend_layout.h"
 #include "insightdock/detail/marker.h"
 #include "insightdock/detail/tick_format.h"
 #include "insightdock/font.h"
@@ -52,11 +53,16 @@ void ScatterChart::clear_series() {
 
 ImageBuffer ScatterChart::render() const {
   ImageBuffer buf(options_.width, options_.height);
-  RasterTarget raster(buf);
-  buf.clear(options_.background);
+  RasterTarget target(buf);
+  draw(target);
+  return buf;
+}
+
+bool ScatterChart::draw(DrawTarget &target) const {
+  target.clear(options_.background);
 
   if (series_.empty())
-    return buf;
+    return true;
 
   Font font(options_.font);
   font.set_size(options_.font_size);
@@ -64,9 +70,9 @@ ImageBuffer ScatterChart::render() const {
   if (!options_.title.empty()) {
     font.set_size(options_.font_size + 4.0f);
     float tw = font.measure_width(options_.title);
-    float tx = (static_cast<float>(buf.width()) - tw) * 0.5f;
-    font.draw_text(buf, tx, 12.0f, options_.title, options_.title_color, TextAlign::Left,
-                   TextBaseline::Top);
+    float tx = (static_cast<float>(target.width()) - tw) * 0.5f;
+    target.draw_text(font, tx, 12.0f, options_.title, options_.title_color, TextAlign::Left,
+                     TextBaseline::Top);
     font.set_size(options_.font_size);
   }
 
@@ -100,7 +106,7 @@ ImageBuffer ScatterChart::render() const {
     }
   }
   if (!any)
-    return buf;
+    return true;
 
   if (opts_.begin_at_zero_x)
     xmin = std::min(xmin, 0.0);
@@ -109,20 +115,31 @@ ImageBuffer ScatterChart::render() const {
 
   float lh = font.line_height();
   Margins m = options_.margins;
+  std::vector<std::string> labels;
+  if (options_.legend.enabled)
+    for (auto const &series : series_)
+      labels.push_back(series.label);
+  bool right = options_.legend.position == LegendOptions::Position::Right;
+  auto legend = detail::layout_legend(labels, font,
+                                      right ? static_cast<float>(target.width()) / 3.0f
+                                            : static_cast<float>(target.width()) - 20.0f,
+                                      static_cast<float>(target.height()) / 3.0f, right);
   if (!options_.title.empty())
     m.top = std::max(m.top, font.line_height() + 16.0f);
   if (options_.legend.enabled && options_.legend.position == LegendOptions::Position::Bottom) {
-    float legend_row = lh + 10.0f;
+    float legend_row = legend.height + 10.0f;
     float x_title_h = opts_.x_axis_label.empty() ? 0.0f : lh + 8.0f;
     m.bottom = std::max(m.bottom, 8.0f + lh + 8.0f + legend_row + x_title_h);
   }
-  if (options_.legend.enabled && options_.legend.position == LegendOptions::Position::Right)
-    m.right = std::max(m.right, 100.0f);
+  if (!legend.items.empty() && right)
+    m.right += legend.width + 12.0f;
+  if (!legend.items.empty() && options_.legend.position == LegendOptions::Position::Top)
+    m.top += legend.height + 10.0f;
 
-  Rect plot(m.left, m.top, static_cast<float>(buf.width()) - m.left - m.right,
-            static_cast<float>(buf.height()) - m.top - m.bottom);
+  Rect plot(m.left, m.top, static_cast<float>(target.width()) - m.left - m.right,
+            static_cast<float>(target.height()) - m.top - m.bottom);
   if (plot.w <= 0.0f || plot.h <= 0.0f)
-    return buf;
+    return true;
 
   // X increases left→right: to_pixel(min)=pixel_max, to_pixel(max)=pixel_min
   // (see Scale convention), so the pixel range is passed reversed here.
@@ -137,13 +154,13 @@ ImageBuffer ScatterChart::render() const {
       float py = y_scale.to_pixel(v);
       if (py < plot.top() || py > plot.bottom())
         continue;
-      buf.draw_line(plot.left(), py, plot.right(), py, 1.0f, options_.grid_color);
+      target.draw_line(plot.left(), py, plot.right(), py, 1.0f, options_.grid_color);
     }
     for (double v : x_ticks) {
       float px = x_scale.to_pixel(v);
       if (px < plot.left() || px > plot.right())
         continue;
-      buf.draw_line(px, plot.top(), px, plot.bottom(), 1.0f, options_.grid_color);
+      target.draw_line(px, plot.top(), px, plot.bottom(), 1.0f, options_.grid_color);
     }
   }
 
@@ -151,27 +168,28 @@ ImageBuffer ScatterChart::render() const {
     float py = y_scale.to_pixel(v);
     if (py < plot.top() || py > plot.bottom())
       continue;
-    font.draw_text(buf, plot.left() - 8.0f, py, format_tick(v), options_.text_color,
-                   TextAlign::Right, TextBaseline::Middle);
+    target.draw_text(font, plot.left() - 8.0f, py, format_tick(v), options_.text_color,
+                     TextAlign::Right, TextBaseline::Middle);
   }
   for (double v : x_ticks) {
     float px = x_scale.to_pixel(v);
     if (px < plot.left() || px > plot.right())
       continue;
-    font.draw_text(buf, px, plot.bottom() + 8.0f, format_tick(v), options_.text_color,
-                   TextAlign::Center, TextBaseline::Top);
+    target.draw_text(font, px, plot.bottom() + 8.0f, format_tick(v), options_.text_color,
+                     TextAlign::Center, TextBaseline::Top);
   }
 
-  buf.draw_line(plot.left(), plot.bottom(), plot.right(), plot.bottom(), 1.5f, options_.axis_color);
-  buf.draw_line(plot.left(), plot.top(), plot.left(), plot.bottom(), 1.5f, options_.axis_color);
+  target.draw_line(plot.left(), plot.bottom(), plot.right(), plot.bottom(), 1.5f,
+                   options_.axis_color);
+  target.draw_line(plot.left(), plot.top(), plot.left(), plot.bottom(), 1.5f, options_.axis_color);
 
   if (!opts_.y_axis_label.empty())
-    font.draw_text_rotated_ccw(buf, lh * 0.5f + 4.0f, plot.center_y(), opts_.y_axis_label,
-                               options_.text_color);
+    target.draw_text_rotated_ccw(font, lh * 0.5f + 4.0f, plot.center_y(), opts_.y_axis_label,
+                                 options_.text_color);
   if (!opts_.x_axis_label.empty())
-    font.draw_text(buf, plot.center_x(), static_cast<float>(buf.height()) - 8.0f,
-                   opts_.x_axis_label, options_.text_color, TextAlign::Center,
-                   TextBaseline::Bottom);
+    target.draw_text(font, plot.center_x(), static_cast<float>(target.height()) - 8.0f,
+                     opts_.x_axis_label, options_.text_color, TextAlign::Center,
+                     TextBaseline::Bottom);
 
   uint8_t fill_a = static_cast<uint8_t>(opts_.fill_opacity * 255.0f + 0.5f);
 
@@ -192,49 +210,36 @@ ImageBuffer ScatterChart::render() const {
                                        (opts_.max_bubble_radius - opts_.min_bubble_radius)
                              : opts_.max_bubble_radius;
       }
-      detail::draw_marker(raster, px, py, radius, opts_.point_shape, fill);
+      detail::draw_marker(target, px, py, radius, opts_.point_shape, fill);
 
       if (opts_.data_labels.enabled) {
         auto const &dl = opts_.data_labels;
         std::string text = detail::format_label_value(p.y, dl.format, dl.decimals);
-        label_font.draw_text(buf, px, py - radius - 4.0f, text, dl.color, TextAlign::Center,
-                             TextBaseline::Bottom);
+        target.draw_text(label_font, px, py - radius - 4.0f, text, dl.color, TextAlign::Center,
+                         TextBaseline::Bottom);
       }
     }
   }
 
-  if (options_.legend.enabled) {
-    font.set_size(options_.font_size);
-    float box = 10.0f;
-    float gap = 16.0f;
-
-    if (options_.legend.position == LegendOptions::Position::Right) {
-      float x = plot.right() + 12.0f;
-      float y = plot.top();
-      for (auto const &s : series_) {
-        buf.fill_rect(x, y, box, box, s.color);
-        font.draw_text(buf, x + box + 6.0f, y + box * 0.5f, s.label, options_.text_color,
-                       TextAlign::Left, TextBaseline::Middle);
-        y += box + 8.0f;
-      }
-    } else {
-      float item_w = 0.0f;
-      for (auto const &s : series_)
-        item_w = std::max(item_w, box + 6.0f + font.measure_width(s.label));
-      float total_w = item_w * static_cast<float>(series_.size()) +
-                      gap * static_cast<float>(series_.size() - 1);
-      float x = (static_cast<float>(buf.width()) - total_w) * 0.5f;
-      float y = plot.bottom() + 8.0f + lh + 8.0f;
-      for (auto const &s : series_) {
-        buf.fill_rect(x, y, box, box, s.color);
-        font.draw_text(buf, x + box + 6.0f, y + box * 0.5f, s.label, options_.text_color,
-                       TextAlign::Left, TextBaseline::Middle);
-        x += item_w + gap;
-      }
+  if (!legend.items.empty()) {
+    float x = right ? static_cast<float>(target.width()) - legend.width - 10.0f : 10.0f;
+    float y = plot.bottom() + 8.0f + lh + 8.0f;
+    if (right)
+      y = plot.top();
+    if (options_.legend.position == LegendOptions::Position::Top)
+      y = plot.top() - legend.height - 10.0f;
+    float line = std::max(10.0f, lh);
+    for (auto const &item : legend.items) {
+      if (item.index < series_.size())
+        target.fill_rect(x + item.x, y + item.y + (line - 10.0f) * 0.5f, 10.0f, 10.0f,
+                         series_[item.index].color);
+      for (std::size_t i = 0; i < item.lines.size(); ++i)
+        target.draw_text(font, x + item.x + 16.0f, y + item.y + static_cast<float>(i) * line,
+                         item.lines[i], options_.text_color, TextAlign::Left, TextBaseline::Top);
     }
   }
 
-  return buf;
+  return true;
 }
 
 } // namespace insightdock::charts

@@ -29,6 +29,8 @@ public:
                          Color const &color) override;
   void fill_polygon(Point const *points, std::size_t count, Color const &color) override;
   void fill_circle(float cx, float cy, float radius, Color const &color) override;
+  void fill_sector(float cx, float cy, float radius, double start, double end,
+                   Color const &color) override;
   void draw_line(float x0, float y0, float x1, float y1, float width, Color const &color) override;
   void draw_polyline(Point const *points, std::size_t count, float width,
                      Color const &color) override;
@@ -58,8 +60,7 @@ private:
 
 /**
  * @brief Render @p chart as a native-vector SVG document.
- * @return The XML, or an empty string if the chart type has no @ref Chart::draw path (pie and
- *         scatter use their own pipelines).
+ * @return The XML, or an empty string if the chart type has no @ref Chart::draw path.
  */
 INSIGHTDOCK_API std::string build_chart_svg(Chart const &chart);
 

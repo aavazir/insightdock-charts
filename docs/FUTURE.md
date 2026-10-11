@@ -41,7 +41,7 @@ Document patterns for AI agents and IDE skills:
 
 Example skill prompt:
 
-> Create an InsightDock pie chart from `{ "Online": 72, "Offline": 28 }` and save as PNG using `ChartExporter::save`.
+> Create an InsightDock Charts pie chart from `{ "Online": 72, "Offline": 28 }` and save as PNG using `ChartExporter::save`.
 
 ## Agent workflow targets
 
