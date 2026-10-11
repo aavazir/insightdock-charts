@@ -110,7 +110,7 @@ void plot_aa(ImageBuffer &img, float x, float y, Color const &color, float cover
                   color.g, color.b, sa);
 }
 
-// Xiaolin Wu style simplified: distance-to-segment coverage per pixel.
+// Filled round-capped stroke with distance-based edge coverage.
 void draw_thick_segment(ImageBuffer &img, float x0, float y0, float x1, float y1, float width,
                         Color const &color) {
   if (!std::isfinite(x0) || !std::isfinite(y0) || !std::isfinite(x1) || !std::isfinite(y1) ||
@@ -130,27 +130,32 @@ void draw_thick_segment(ImageBuffer &img, float x0, float y0, float x1, float y1
     dy = y1 - y0;
     len = std::sqrt(dx * dx + dy * dy);
   }
-  if (len < 1e-6f) {
-    plot_aa(img, x0, y0, color, 1.0f);
-    return;
-  }
-
-  float nx = -dy / len;
-  float ny = dx / len;
   float half = width * 0.5f;
-
-  int steps = static_cast<int>(len * 2.0f) + 1;
-  for (int i = 0; i <= steps; ++i) {
-    float t = static_cast<float>(i) / static_cast<float>(steps);
-    float cx = x0 + dx * t;
-    float cy = y0 + dy * t;
-
-    for (int o = -1; o <= 1; ++o) {
-      for (int p = -1; p <= 1; ++p) {
-        float ox = nx * half * static_cast<float>(o);
-        float oy = ny * half * static_cast<float>(p);
-        plot_aa(img, cx + ox, cy + oy, color, 0.85f);
-      }
+  float reach = half + 0.5f;
+  int y_begin = std::max(0, to_int_floor(std::min(y0, y1) - reach));
+  int y_end = std::min(static_cast<int>(img.height()) - 1, to_int_ceil(std::max(y0, y1) + reach));
+  float len_sq = len * len;
+  for (int y = y_begin; y <= y_end; ++y) {
+    float py = static_cast<float>(y) + 0.5f;
+    // Restrict each scanline to the strip around the segment, keeping work
+    // proportional to length * width even for long diagonal strokes.
+    float t_begin = 0.0f, t_end = 1.0f;
+    if (std::fabs(dy) > 1e-6f) {
+      float a = (py - reach - y0) / dy;
+      float b = (py + reach - y0) / dy;
+      t_begin = std::clamp(std::min(a, b), 0.0f, 1.0f);
+      t_end = std::clamp(std::max(a, b), 0.0f, 1.0f);
+    }
+    float xa = x0 + dx * t_begin, xb = x0 + dx * t_end;
+    int x_begin = std::max(0, to_int_floor(std::min(xa, xb) - reach));
+    int x_end = std::min(static_cast<int>(img.width()) - 1, to_int_ceil(std::max(xa, xb) + reach));
+    for (int x = x_begin; x <= x_end; ++x) {
+      float px = static_cast<float>(x) + 0.5f;
+      float t = len_sq > 1e-12f ? std::clamp(((px - x0) * dx + (py - y0) * dy) / len_sq, 0.0f, 1.0f)
+                                : 0.0f;
+      float ex = px - (x0 + t * dx), ey = py - (y0 + t * dy);
+      float coverage = std::clamp(reach - std::sqrt(ex * ex + ey * ey), 0.0f, 1.0f);
+      plot_aa(img, static_cast<float>(x), static_cast<float>(y), color, coverage);
     }
   }
 }

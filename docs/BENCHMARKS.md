@@ -1,6 +1,6 @@
 # Benchmarks and measurement
 
-InsightDock does not publish performance marketing claims without measurements. Use this document to track objective progress against ChartDirector and StockChartX capabilities.
+InsightDock Charts does not publish performance marketing claims without measurements. Use this document to track objective progress against ChartDirector and StockChartX capabilities.
 
 ## Metrics
 
@@ -15,9 +15,9 @@ Count supported chart families: pie, bar (grouped/stacked), line, area, finance 
 | PNG | Supported |
 | JPEG | Supported |
 | PDF raster | Supported (PoDoFo) |
-| PDF vector (pie) | Supported |
+| PDF vector | Native pie, bar, line, area, combo, scatter/bubble |
 | SVG raster embed | Supported |
-| SVG native vector (pie) | Supported |
+| SVG native vector | Pie, bar, line, area, combo, scatter/bubble |
 
 ### Render quality
 
@@ -89,7 +89,9 @@ Track examples per public feature in README and `examples/`.
 |--------|--------------|--------|
 | Ubuntu/Debian | CMake + Make | CI |
 | OpenWrt cross | Make | Manual |
-| Windows MSVC | CMake | Feasibility |
+| Windows MSVC | CMake | CI configured, static/shared |
+| macOS | CMake | CI configured |
+| Linux ARM64 | CMake | CI configured |
 
 ## Running smoke tests
 

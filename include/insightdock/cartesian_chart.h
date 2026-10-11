@@ -26,11 +26,11 @@ namespace insightdock::charts {
  * a @ref CartesianOptions::custom_y_formatter callback for full control.
  */
 enum class TickFormat {
-  Raw,      ///< `%.0f` for integers, `%.2f` for fractions (default).
+  Raw,      ///< Automatic precision; preserves fractions and uses scientific notation as needed.
   SI,       ///< SI prefixes: 1 500 000 → "1.5M", 2 300 → "2.3K".
   Currency, ///< Two decimal places with a leading `$`: "1234.56" → "$1234.56".
   Percent,  ///< One decimal place with a trailing `%`: "42.5" → "42.5%".
-  DateTime, ///< Unix timestamp → `YYYY-MM-DD HH:MM` (for @ref ScaleType::DateTime axes).
+  DateTime, ///< Unix timestamp → `YYYY-MM-DD HH:MM` in UTC.
 };
 
 /** @brief Which axis a @ref ReferenceLine or @ref ReferenceBand is measured against. */
@@ -166,6 +166,13 @@ struct CartesianOptions {
   /** @brief Custom secondary y-axis tick formatter; overrides @p y2_tick_format when non-null. */
   std::function<std::string(double)> custom_y2_formatter;
 
+  /**
+   * Custom continuous x-axis tick formatter. Receives the original Unix timestamp; the default
+   * is UTC `YYYY-MM-DD HH:MM`. Use this callback for another date format or timezone. Category
+   * labels are supplied through set_categories() and are not passed to this formatter.
+   */
+  std::function<std::string(double)> custom_x_formatter;
+
   /** @brief Threshold/annotation lines drawn behind the chart's own series. */
   std::vector<ReferenceLine> reference_lines;
   /** @brief Shaded threshold bands drawn behind the chart's own series. */
@@ -182,6 +189,9 @@ struct CartesianOptions {
  */
 class INSIGHTDOCK_API CartesianChart : public Chart {
 public:
+  VectorCapability vector_capability() const noexcept override {
+    return VectorCapability::Native;
+  }
   /**
    * @brief Context passed to @ref draw_series() and @ref draw_overlay() during rendering.
    *

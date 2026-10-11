@@ -1,6 +1,6 @@
 # Gallery
 
-Generated sample outputs from InsightDock generic examples. Regenerate after visual changes:
+Generated sample outputs from InsightDock Charts generic examples. Regenerate after visual changes:
 
 ```bash
 cmake -B build -DINSIGHTDOCK_BUILD_TESTS=ON
@@ -32,8 +32,8 @@ PDF samples (PoDoFo required):
 
 ## Vector output sample
 
-`vector_vs_matplotlib.png` shows the same grouped bar chart as a vector PDF from InsightDock and from
+`vector_vs_matplotlib.png` shows the same grouped bar chart as a vector PDF from InsightDock Charts and from
 Matplotlib 3.10 (pages rasterised with `pdftoppm` for the preview). `insightdock_bar.svg` is the native
-SVG. For the InsightDock PDF, `pdfimages -list` shows no embedded images, so bars and text are real
+SVG. For the InsightDock Charts PDF, `pdfimages -list` shows no embedded images, so bars and text are real
 vector objects. PDFs are git-ignored, so regenerate them with a PoDoFo build. The comparison is of
 output style only; it makes no claim about speed or quality.

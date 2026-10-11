@@ -1,9 +1,31 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) InsightDock contributors
 
+#include "insightdock/detail/math_constants.h"
 #include "insightdock/draw_target.h"
 
+#include <cmath>
+
 namespace insightdock::charts {
+
+void DrawTarget::fill_sector(float cx, float cy, float radius, double start, double end,
+                             Color const &color) {
+  if (!std::isfinite(cx) || !std::isfinite(cy) || !std::isfinite(radius) || radius <= 0.0f ||
+      !std::isfinite(start) || !std::isfinite(end) || end <= start)
+    return;
+  if (end - start >= 2.0 * M_PI - 1e-9) {
+    fill_circle(cx, cy, radius, color);
+    return;
+  }
+  std::vector<Point> polygon{{cx, cy}};
+  constexpr int steps = 96;
+  for (int i = 0; i <= steps; ++i) {
+    double angle = start + (end - start) * i / steps;
+    polygon.emplace_back(cx + radius * static_cast<float>(std::cos(angle)),
+                         cy + radius * static_cast<float>(std::sin(angle)));
+  }
+  fill_polygon(polygon.data(), polygon.size(), color);
+}
 
 void RasterTarget::clear(Color const &color) {
   buf_.clear(color);
@@ -20,6 +42,10 @@ void RasterTarget::fill_polygon(Point const *points, std::size_t count, Color co
 }
 void RasterTarget::fill_circle(float cx, float cy, float radius, Color const &color) {
   buf_.fill_circle(cx, cy, radius, color);
+}
+void RasterTarget::fill_sector(float cx, float cy, float radius, double start, double end,
+                               Color const &color) {
+  buf_.fill_sector(cx, cy, radius, start, end, color);
 }
 void RasterTarget::draw_line(float x0, float y0, float x1, float y1, float width,
                              Color const &color) {

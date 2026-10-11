@@ -1,6 +1,6 @@
 # Concepts
 
-How InsightDock is put together, for anyone extending a chart type, embedding a custom overlay,
+How InsightDock Charts is put together, for anyone extending a chart type, embedding a custom overlay,
 or just wanting to know why a call is shaped the way it is. If you only need to *use* existing
 chart types, the [Usage guide](guides/usage.md) and [Chart types](chart-types/pie.md) pages are a
 faster path — come back here when you need the "why."
@@ -57,8 +57,8 @@ output (see [Vector export](guides/vector-export.md)). `draw()` runs, in order:
 7. `draw_legend()` — one entry per series, using each `DataSeries::color`.
 
 `PieChart` and `ScatterChart` don't go through this pipeline — they override `render()` directly
-since they don't share the category/series axis model. (`PieChart` has its own vector SVG/PDF
-writers; `ScatterChart` embeds a raster image in vector formats.)
+since they don't share the category/series axis model. Both implement `Chart::draw()` to share
+their geometry and layout across raster, SVG and PDF.
 
 ## `PlotContext`
 

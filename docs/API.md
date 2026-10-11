@@ -38,13 +38,13 @@ generation commands, and the MkDocs site build: [DOCUMENTATION.md](https://githu
 | `insightdock/area_chart.h` | `AreaChart`, `AreaChartOptions` (area and stacked-area) |
 | `insightdock/scatter_chart.h` | `ScatterChart`, `ScatterOptions`, `ScatterPoint`, `ScatterSeries` (scatter and bubble) |
 | `insightdock/cartesian_chart.h` | `CartesianChart`, `CartesianOptions`, `TickFormat`, `PlotContext` |
-| `insightdock/export.h` | `ChartExporter`, `ExportOptions`, `PdfBackend`, `SvgBackend` |
+| `insightdock/export.h` | `ChartExporter`, `ExportOptions`, `ExportCapabilities`, `VectorFallback`, `PdfBackend`, `SvgBackend` |
 | `insightdock/scale.h` | `Scale`, `ScaleType` |
 | `insightdock/decimate.h` | `lttb_decimate`, `lttb_decimate_indexed` — LTTB downsampling for large datasets |
 | `insightdock/image_buffer.h` | `ImageBuffer` — RGBA raster buffer and draw primitives |
 | `insightdock/color.h`, `palette.h`, `font.h` | Visual primitives |
 | `insightdock/png_writer.h` | Low-level PNG/JPEG encode |
-| `insightdock/svg_writer.h` | SVG encode — raster embed (PNG base64-inlined); native vector path for pie is `ExportOptions::svg_backend = SvgBackend::Vector` |
+| `insightdock/svg_writer.h` | Low-level raster SVG encoding (PNG base64-inlined); use `ChartExporter` with `SvgBackend::Vector` for native vector charts |
 | `insightdock/pdf/podofo.h` | PDF umbrella (PoDoFo build) |
 | `insightdock/pdf/report.h` | `PdfReportBuilder` — tables, sections, footers (PoDoFo build) |
 
@@ -56,19 +56,35 @@ generation commands, and the MkDocs site build: [DOCUMENTATION.md](https://githu
 | `ChartOptions`, `PieOptions`, `ScatterOptions`, … | Styling and layout per chart type |
 | `ChartTheme` | Reusable visual style — apply across multiple charts |
 | `ChartResult<T>` | Structured result from `save()` / `encode()` — holds value or `ChartError` |
-| `ChartError` | Enum of failure reasons: `BadPath`, `RenderFailure`, `EncodeFailure`, `PdfUnsupported`, `InvalidInput` |
+| `ChartError` | Enum of failure reasons: `BadPath`, `RenderFailure`, `EncodeFailure`, `PdfUnsupported`, `InvalidInput`, `VectorUnsupported` |
 | `TickFormat` | Y-axis label style: `Raw`, `SI`, `Currency`, `Percent`, `DateTime` |
 | `ScaleType` | Axis scale mode: `Linear`, `Log`, `DateTime` |
 | `ChartExporter` | Render and save PNG / JPEG / SVG / PDF |
-| `SvgBackend` | `Raster` (default, all charts) or `Vector` (native paths for pie; others fall back to raster) |
+| `SvgBackend` | `Raster` (default, all charts) or `Vector` (native output for all built-in charts) |
 | `lttb_decimate` / `lttb_decimate_indexed` | LTTB downsampling for large `LineChart`/`AreaChart` datasets |
 | `PdfReportBuilder` | Multi-page PDF report layout (PoDoFo) |
 | `ImageBuffer` | RGBA raster buffer |
 | `Color`, `Palette`, `Font` | Visual primitives |
 
+DateTime tick labels use UTC by default. `CartesianOptions::custom_x_formatter` receives the
+original timestamp for custom date formats or timezone presentation on continuous x axes.
+Raw numeric labels preserve fractions; value-axis labels select decimal precision from tick spacing.
+
+Legends wrap long labels and explicit newlines using the chart font. Top/bottom positions pack
+centered rows; Right reserves measured space up to a third of the canvas width. Legends occupy
+at most a third of the canvas height and show `+N more` for omitted entries without hiding data.
+Automatic pie geometry reserves title, legend and measured callout space during rendering. Legacy PDF pie report
+helpers retain their separate layout.
+
 Namespace: `insightdock::charts`
 
 PDF helpers: `insightdock::charts::podofo` (via `insightdock/pdf/podofo.h`)
+
+Pie and Cartesian charts implement `Chart::draw(DrawTarget&)` with a shared raster/SVG/PDF chart
+layout. `DrawTarget::fill_sector()` defaults to polygon tessellation, preserving source compatibility
+for custom targets. `podofo::draw_chart_vector()` without `PieVectorOptions` uses this layout;
+the overload with explicit `PieVectorOptions`, plus `draw_pie()` / `draw_pie_slices()`, retains the
+separate PDF report layout.
 
 ## Design principles
 
@@ -96,6 +112,21 @@ auto enc = ChartExporter::encode(chart, opts);
 if (enc)
   upload(enc.value.data(), enc.value.size());
 ```
+
+Both functions accept const charts; mutable overloads use the same implementation.
+`ChartExporter::capabilities(chart)` reports the chart's advertised `VectorCapability` and
+compiled PDF availability without rendering. For native SVG/PDF requests,
+`ExportOptions::vector_fallback = VectorFallback::Reject` returns `VectorUnsupported` when
+`draw()` declines the target. The default `AllowRaster` embeds an image with normal raster
+quality/size checks. Existing custom `draw()` implementations work in strict mode even if their
+capability declaration remains `Unknown`.
+
+Standard exceptions during rendering/cloning become `RenderFailure`; native drawing/encoding
+exceptions become `EncodeFailure`; file I/O exceptions become `BadPath`. These APIs are not
+`noexcept`: non-standard custom exceptions and allocations/path preparation outside guarded
+operations can propagate. `render()` propagates exceptions. Void PDF embedding APIs propagate
+rendering/PoDoFo errors and throw `std::runtime_error` on strict vector rejection; they cannot
+roll back marks already written by custom drawing code.
 
 ## Theming
 
@@ -126,7 +157,13 @@ bar.cartesian_options().custom_y_formatter = [](double v) {
 
 ## Pie chart labels
 
-Slice labels may contain `\n` for manual line breaks (long MAC addresses, etc.). The label and percentage lines are stacked vertically; the renderer adjusts percentage position when the label spans multiple lines (raster and PoDoFo vector).
+Slice labels may contain `\n` for manual line breaks. Shared PNG/SVG/PDF chart exports wrap
+labels using font measurements and place the label and optional percentage in a block outside
+the pie. Blocks move vertically to avoid overlap; leader lines stay outside the circle. Title and
+legend areas are reserved. When a column cannot fit every block, larger slices keep their
+callouts first, with input-order ties. Blocks that cannot fit are omitted in full; slices and
+legend entries remain independent. Explicit geometry can leave less room for callouts.
+Legacy `PieVectorOptions` PDF report helpers retain their separate layout policy.
 
 ## Visual regression
 
@@ -166,3 +203,16 @@ target_link_libraries(app PRIVATE InsightDock::Charts)
 ```
 
 Compile definition `INSIGHTDOCK_HAS_PODOFO=1` when PDF support is linked.
+
+## Supersampling
+
+Set `ExportOptions::supersample` to 2 or 4 to improve raster edge quality. Factors are clamped
+into [1, 8]; pixel limits apply to the high-resolution allocation. Output dimensions stay at the
+chart's configured size. Built-in charts compute layout once in logical pixels and scale every
+primitive, including strokes, dashes, markers, corners, leaders and all text sizes. Wrapping,
+legend overflow and callout selection therefore stay consistent across sampling factors.
+Native SVG/PDF ignores this option.
+
+Custom charts need `clone()` and should implement `draw(DrawTarget&)` for consistent scaling.
+A `render()`-only clone receives scaled canvas, base font and margins through the legacy path;
+its custom style sizes are its own responsibility. Exports never mutate the original chart.

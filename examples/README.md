@@ -1,4 +1,4 @@
-# InsightDock examples
+# InsightDock Charts examples
 
 Generic, synthetic examples for the reusable core library.
 

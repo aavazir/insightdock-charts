@@ -17,7 +17,7 @@ issue. Include the chart type and relevant options.
 What you expected to happen.
 
 **Environment**
-- InsightDock version/commit:
+- InsightDock Charts version/commit:
 - Compiler and version:
 - OS:
 - Build system (CMake or plain Makefile) and relevant options (`INSIGHTDOCK_WITH_PODOFO`, `CHART_TYPES`, etc.):

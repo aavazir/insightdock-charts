@@ -2,84 +2,18 @@
 // Copyright (c) InsightDock contributors
 
 #include "insightdock/pie_chart.h"
+#include "insightdock/detail/legend_layout.h"
 #include "insightdock/detail/math_constants.h"
+#include "insightdock/detail/text_wrap.h"
 #include "insightdock/detail/tick_format.h"
+#include "insightdock/draw_target.h"
 
 #include <algorithm>
 #include <cmath>
-#include <cstdio>
-#include <sstream>
 
 namespace insightdock::charts {
 
 namespace {
-
-void append_wrapped_token(Font const &font, float max_width, std::string const &token,
-                          std::string &cur, std::vector<std::string> &out) {
-  if (token.empty())
-    return;
-  if (cur.empty()) {
-    for (char c : token) {
-      std::string next = cur + c;
-      if (!cur.empty() && font.measure_width(next) > max_width) {
-        out.push_back(cur);
-        cur = std::string(1, c);
-      } else {
-        cur = next;
-      }
-    }
-    return;
-  }
-  std::string spaced = cur + ' ' + token;
-  if (font.measure_width(spaced) <= max_width) {
-    cur = spaced;
-    return;
-  }
-  if (!cur.empty()) {
-    out.push_back(cur);
-    cur.clear();
-  }
-  append_wrapped_token(font, max_width, token, cur, out);
-}
-
-std::vector<std::string> wrap_label_text(Font const &font, std::string const &text,
-                                         float max_width) {
-  if (text.empty())
-    return {};
-  if (max_width <= 1.0f)
-    return {text};
-
-  std::vector<std::string> out;
-  std::size_t para_start = 0;
-  while (para_start <= text.size()) {
-    auto para_end = text.find('\n', para_start);
-    std::string para = (para_end == std::string::npos)
-                           ? text.substr(para_start)
-                           : text.substr(para_start, para_end - para_start);
-
-    std::string cur;
-    std::size_t i = 0;
-    while (i < para.size()) {
-      while (i < para.size() && para[i] == ' ')
-        ++i;
-      if (i >= para.size())
-        break;
-      auto j = para.find(' ', i);
-      append_wrapped_token(font, max_width,
-                           j == std::string::npos ? para.substr(i) : para.substr(i, j - i), cur,
-                           out);
-      i = j == std::string::npos ? para.size() : j + 1;
-    }
-    if (!cur.empty())
-      out.push_back(cur);
-    if (para_end == std::string::npos)
-      break;
-    para_start = para_end + 1;
-  }
-  if (out.empty())
-    return {text};
-  return out;
-}
 
 constexpr double deg_to_rad(double deg) {
   return deg * M_PI / 180.0;
@@ -90,9 +24,8 @@ slice_polygon(float cx, float cy, float radius, double start_rad, double end_rad
   double s = std::max(start_rad, start_rad + gap_rad);
   double e = std::min(end_rad, end_rad - gap_rad);
 
-  if (e - s < 0.001) {
-    return {{cx, cy}, {cx + 1.0f, cy}, {cx, cy + 1.0f}};
-  }
+  if (e <= s)
+    return {};
 
   std::vector<std::pair<float, float>> poly;
   poly.push_back({cx, cy});
@@ -115,8 +48,8 @@ PieChart::PieChart() {
 void PieChart::add_slice(std::string label, double value, Color color) {
   PieSlice slice;
   slice.label = std::move(label);
-  // NaN/Inf can't be drawn proportionally and would poison the total; treat them as zero.
-  slice.value = std::isfinite(value) ? value : 0.0;
+  // A pie encodes nonnegative proportions; invalid or negative inputs count as zero.
+  slice.value = std::isfinite(value) && value > 0.0 ? value : 0.0;
   slice.color = color;
   slices_.push_back(std::move(slice));
 }
@@ -126,13 +59,6 @@ void PieChart::add_slice(std::string label, double value) {
 }
 
 void PieChart::set_pie_options(PieOptions opts) {
-  if (opts.center_x == 0.0 && opts.center_y == 0.0 && options_.width > 0 && options_.height > 0) {
-    opts.center_x = options_.width / 2.0;
-    opts.center_y = options_.height / 2.0;
-  }
-  if (opts.radius == 0.0 && options_.width > 0 && options_.height > 0) {
-    opts.radius = std::min(options_.width, options_.height) / 2.0 - 80.0;
-  }
   pie_opts_ = opts;
 }
 
@@ -142,43 +68,102 @@ void PieChart::clear_slices() {
 
 ImageBuffer PieChart::render() const {
   ImageBuffer img(options_.width, options_.height);
-  img.clear(options_.background);
+  RasterTarget target(img);
+  draw(target);
+  return img;
+}
+
+bool PieChart::draw(DrawTarget &target) const {
+  target.clear(options_.background);
 
   if (slices_.empty())
-    return img;
+    return true;
 
+  double largest = 0.0;
+  for (auto const &s : slices_)
+    largest = std::max(largest, s.value);
+  if (largest == 0.0)
+    return true;
+
+  // Normalize first so multiple finite values near DBL_MAX cannot overflow the total.
   double total = 0.0;
   for (auto const &s : slices_) {
     if (pie_opts_.skip_zero && s.value <= 0.0)
       continue;
-    total += s.value;
+    total += s.value / largest;
   }
   if (total <= 0.0)
-    return img;
+    return true;
 
+  Font legend_font(options_.font);
+  legend_font.set_size(options_.font_size);
+  std::vector<std::string> legend_labels;
+  if (pie_opts_.show_legend) {
+    for (auto const &slice : slices_) {
+      if (pie_opts_.skip_zero && slice.value <= 0.0)
+        continue;
+      auto label = slice.label;
+      if (pie_opts_.show_percentage)
+        label += " (" +
+                 detail::format_label_value((slice.value / largest) / total * 100.0,
+                                            TickFormat::Percent, 0) +
+                 ")";
+      legend_labels.push_back(std::move(label));
+    }
+  }
+  bool right_legend = pie_opts_.legend_position == PieLegendPosition::Right;
+  float width = static_cast<float>(options_.width);
+  float height = static_cast<float>(options_.height);
+  auto legend =
+      detail::layout_legend(legend_labels, legend_font, right_legend ? width / 3.0f : width - 20.0f,
+                            height / 3.0f, right_legend);
+  double plot_right = width - (right_legend && !legend.items.empty() ? legend.width + 22.0f : 0);
+  double plot_bottom =
+      height - (!right_legend && !legend.items.empty() ? legend.height + 22.0f : 0);
+  double plot_top =
+      options_.title.empty()
+          ? 0.0
+          : 12.0 + legend_font.line_height() * (options_.font_size + 4) / options_.font_size + 8.0;
   double cx = pie_opts_.center_x;
   double cy = pie_opts_.center_y;
   if (cx == 0.0 && cy == 0.0) {
-    cx = options_.width / 2.0;
-    cy = options_.height / 2.0;
+    cx = plot_right / 2.0;
+    cy = (plot_top + plot_bottom) / 2.0;
   }
+  Font font(options_.font);
+  font.set_size(pie_opts_.label_font_size);
+  float fs = font.size();
+  float text_gap = fs * 0.4f;
+  float leader_margin = fs;
   double radius = pie_opts_.radius;
-  // Auto-fit: if radius is unset (0, the sentinel — same convention as center_x/
-  // center_y above) or would overflow the image, shrink to fit. Leave ~35% of the
-  // shorter half for callout labels. An explicitly-configured non-zero radius that
-  // already fits the canvas is trusted as-is, even if a near-horizontal slice's
-  // leader line ends up tight on space — that's a caller choice, not a default.
-  double max_fit = std::min({cx, static_cast<double>(options_.width) - cx, cy,
-                             static_cast<double>(options_.height) - cy}) *
-                   0.65;
-  if (max_fit < 20.0)
-    max_fit = 20.0;
-  if (radius <= 0.0 || cx - radius < 0 || cx + radius > static_cast<double>(options_.width) ||
-      cy - radius < 0 || cy + radius > static_cast<double>(options_.height)) {
+  double max_fit =
+      std::max(0.0, std::min({cx, plot_right - cx, cy - plot_top, plot_bottom - cy})) * 0.65;
+  if (radius <= 0.0 || cx - radius < 0 || cx + radius > width || cy - radius < 0 ||
+      cy + radius > height)
     radius = max_fit;
+  if (pie_opts_.radius <= 0.0 && pie_opts_.show_labels) {
+    // Reserve measured text columns on both sides before drawing automatic geometry.
+    float label_width = 0.0f;
+    for (auto const &slice : slices_) {
+      if (pie_opts_.skip_zero && slice.value <= 0.0)
+        continue;
+      auto lines = detail::wrap_text(slice.label, fs * 7.0f, [&](std::string const &text) {
+        return font.measure_width(text);
+      });
+      for (auto const &line : lines)
+        label_width = std::max(label_width, font.measure_width(line));
+    }
+    if (pie_opts_.show_percentage)
+      label_width = std::max(label_width, font.measure_width("100.0%"));
+    label_width = std::min(label_width, static_cast<float>(plot_right) / 3.0f);
+    double horizontal_fit =
+        std::min(cx, plot_right - cx) - label_width - leader_margin - text_gap - 8.0;
+    radius = std::min(radius, std::max(0.0, horizontal_fit));
   }
 
-  float fill_a = static_cast<uint8_t>(pie_opts_.fill_opacity * 255.0f + 0.5f);
+  float opacity =
+      std::isfinite(pie_opts_.fill_opacity) ? std::clamp(pie_opts_.fill_opacity, 0.0f, 1.0f) : 0.0f;
+  auto fill_a = static_cast<uint8_t>(opacity * 255.0f + 0.5f);
 
   struct SliceDraw {
     PieSlice const *slice;
@@ -196,33 +181,41 @@ ImageBuffer PieChart::render() const {
     if (pie_opts_.skip_zero && slice.value <= 0.0)
       continue;
 
-    double slice_angle = (slice.value / total) * 2.0 * M_PI;
+    double fraction = (slice.value / largest) / total;
+    double slice_angle = fraction * 2.0 * M_PI;
     double end_angle = angle + slice_angle;
     double mid = angle + slice_angle * 0.5;
 
     double s = std::max(angle, angle + gap);
     double e = std::min(end_angle, end_angle - gap);
 
+    drawn.push_back({&slice, angle, end_angle, mid, fraction * 100.0});
+
+    // Gaps that consume the whole wedge produce no stray triangle or reversed arc.
+    if (e <= s) {
+      angle = end_angle;
+      continue;
+    }
+
     Color fill = slice.color;
-    fill.a = fill_a;
-    img.fill_sector(static_cast<float>(cx), static_cast<float>(cy), static_cast<float>(radius), s,
-                    e, fill);
+    fill.a = static_cast<uint8_t>((static_cast<unsigned>(fill.a) * fill_a + 127) / 255);
+    target.fill_sector(static_cast<float>(cx), static_cast<float>(cy), static_cast<float>(radius),
+                       s, e, fill);
 
     if (pie_opts_.stroke_width > 0.0f) {
       auto poly = slice_polygon(static_cast<float>(cx), static_cast<float>(cy),
                                 static_cast<float>(radius), angle, end_angle, gap);
-      img.draw_polygon_outline(poly.data(), poly.size(), pie_opts_.stroke_width,
-                               pie_opts_.stroke_color);
+      target.draw_polygon_outline(poly.data(), poly.size(), pie_opts_.stroke_width,
+                                  pie_opts_.stroke_color);
     }
 
-    drawn.push_back({&slice, angle, end_angle, mid, (slice.value / total) * 100.0});
     angle = end_angle;
   }
 
   if (pie_opts_.inner_radius_ratio > 0.0) {
     double inner_radius = radius * std::min(pie_opts_.inner_radius_ratio, 0.999);
-    img.fill_circle(static_cast<float>(cx), static_cast<float>(cy),
-                    static_cast<float>(inner_radius), options_.background);
+    target.fill_circle(static_cast<float>(cx), static_cast<float>(cy),
+                       static_cast<float>(inner_radius), options_.background);
   }
 
   if (pie_opts_.data_labels.enabled) {
@@ -236,118 +229,130 @@ ImageBuffer PieChart::render() const {
                  static_cast<float>(radius) * 0.65f * static_cast<float>(std::cos(d.mid));
       float ly = static_cast<float>(cy) +
                  static_cast<float>(radius) * 0.65f * static_cast<float>(std::sin(d.mid));
-      dl_font.draw_text(img, lx, ly, text, dl.color, TextAlign::Center, TextBaseline::Middle);
+      target.draw_text(dl_font, lx, ly, text, dl.color, TextAlign::Center, TextBaseline::Middle);
     }
   }
-
-  Font font(options_.font);
-  font.set_size(pie_opts_.label_font_size);
 
   if (pie_opts_.show_labels) {
-    float fs = pie_opts_.label_font_size;
-    float knee_len = fs * 2.0f;  // radial leader beyond the slice edge
-    float h_len = fs * 2.5f;     // horizontal elbow segment
-    float text_gap = fs * 0.4f;  // gap between elbow end and text
-    float line_gap = fs * 0.62f; // half vertical spacing between the two lines
+    struct Callout {
+      SliceDraw const *slice;
+      std::vector<std::string> lines;
+      std::string percentage;
+      float sx, sy, preferred_y, top, height;
+    };
+    float lh = font.line_height();
+    float gap_between = std::max(2.0f, fs * 0.4f);
+    float pct_gap = fs * 0.24f;
+    float top_bound = static_cast<float>(plot_top) + 8.0f;
+    float bottom_bound = static_cast<float>(plot_bottom) - 8.0f;
     Color leader = Color::gray(150);
 
-    for (auto const &d : drawn) {
-      float cosA = static_cast<float>(std::cos(d.mid));
-      float sinA = static_cast<float>(std::sin(d.mid));
-      bool right = cosA >= 0.0f;
-
-      float sx = static_cast<float>(cx) + static_cast<float>(radius) * cosA;
-      float sy = static_cast<float>(cy) + static_cast<float>(radius) * sinA;
-      float kx = static_cast<float>(cx) + (static_cast<float>(radius) + knee_len) * cosA;
-      float ky = static_cast<float>(cy) + (static_cast<float>(radius) + knee_len) * sinA;
-      float ex = kx + (right ? h_len : -h_len);
-      float ey = ky;
-
-      img.draw_line(sx, sy, kx, ky, std::max(1.0f, fs * 0.09f), leader);
-      img.draw_line(kx, ky, ex, ey, std::max(1.0f, fs * 0.09f), leader);
-
-      char line1[160];
-      std::snprintf(line1, sizeof(line1), "%s", d.slice->label.c_str());
-
-      std::string line2;
-      if (pie_opts_.show_percentage) {
-        char buf[32];
-        std::snprintf(buf, sizeof(buf), "%.1f%%", d.pct);
-        line2 = buf;
+    for (bool right : {false, true}) {
+      float kx = static_cast<float>(cx) +
+                 (right ? 1.0f : -1.0f) * (static_cast<float>(radius) + leader_margin);
+      float rail_x = static_cast<float>(cx) +
+                     (right ? 1.0f : -1.0f) * (static_cast<float>(radius) + leader_margin * 0.35f);
+      float tx = kx + (right ? text_gap : -text_gap);
+      float available_width = right ? static_cast<float>(plot_right) - tx - 8.0f : tx - 8.0f;
+      float max_width = std::min(available_width, fs * 7.0f);
+      if (max_width <= 0.0f || bottom_bound <= top_bound)
+        continue;
+      std::vector<Callout> candidates;
+      for (auto const &d : drawn) {
+        float cos_a = static_cast<float>(std::cos(d.mid));
+        if ((cos_a >= 0.0f) != right)
+          continue;
+        Callout label{};
+        label.slice = &d;
+        label.lines = detail::wrap_text(d.slice->label, max_width, [&](std::string const &text) {
+          return font.measure_width(text);
+        });
+        if (pie_opts_.show_percentage)
+          label.percentage = detail::format_label_value(d.pct, TickFormat::Percent, 1);
+        bool fits = font.measure_width(label.percentage) <= available_width;
+        for (auto const &line : label.lines)
+          fits = fits && font.measure_width(line) <= available_width;
+        label.height = static_cast<float>(label.lines.size()) * lh;
+        if (!label.percentage.empty())
+          label.height += lh + (label.lines.empty() ? 0.0f : pct_gap);
+        if (!fits || label.height == 0.0f)
+          continue;
+        float sin_a = static_cast<float>(std::sin(d.mid));
+        label.sx = static_cast<float>(cx) + static_cast<float>(radius) * cos_a;
+        label.sy = static_cast<float>(cy) + static_cast<float>(radius) * sin_a;
+        label.preferred_y =
+            static_cast<float>(cy) + (static_cast<float>(radius) + leader_margin) * sin_a;
+        candidates.push_back(std::move(label));
       }
-
-      TextAlign align = right ? TextAlign::Left : TextAlign::Right;
-      float tx = ex + (right ? text_gap : -text_gap);
-
-      float max_label_w = right ? static_cast<float>(options_.width) - tx - 8.0f : tx - 8.0f;
-      max_label_w = std::max(max_label_w, 40.0f);
-      max_label_w = std::min(max_label_w, fs * 7.0f);
-      auto label_lines = wrap_label_text(font, line1, max_label_w);
-      float lh = font.line_height();
-      float label_pct_gap = line_gap * 2.0f;
-
-      if (line2.empty()) {
-        if (label_lines.size() <= 1) {
-          font.draw_text(img, tx, ey, line1, pie_opts_.label_color, align, TextBaseline::Middle);
-        } else {
-          float top_y = ey - static_cast<float>(label_lines.size() - 1) * lh * 0.5f;
-          for (std::size_t li = 0; li < label_lines.size(); ++li) {
-            font.draw_text(img, tx, top_y + static_cast<float>(li) * lh, label_lines[li],
+      // In an overfull column, prioritize larger slices with stable input-order ties.
+      std::stable_sort(candidates.begin(), candidates.end(),
+                       [](auto const &a, auto const &b) { return a.slice->pct > b.slice->pct; });
+      std::vector<Callout> labels;
+      float used = 0.0f;
+      for (auto &label : candidates) {
+        float needed = label.height + (labels.empty() ? 0.0f : gap_between);
+        if (used + needed <= bottom_bound - top_bound) {
+          used += needed;
+          labels.push_back(std::move(label));
+        }
+      }
+      // Preserve vertical slice order so leaders do not cross on either side.
+      std::stable_sort(labels.begin(), labels.end(),
+                       [](auto const &a, auto const &b) { return a.preferred_y < b.preferred_y; });
+      float next_top = top_bound;
+      for (auto &label : labels) {
+        label.top = std::max(next_top, label.preferred_y - label.height * 0.5f);
+        next_top = label.top + label.height + gap_between;
+      }
+      float next_bottom = bottom_bound;
+      for (auto it = labels.rbegin(); it != labels.rend(); ++it) {
+        it->top = std::min(it->top, next_bottom - it->height);
+        next_bottom = it->top - gap_between;
+      }
+      for (auto const &label : labels) {
+        float elbow_y = label.top + label.height * 0.5f;
+        // Horizontal exits stay outside the circle. Two fixed rails preserve endpoint order
+        // when vertically displaced blocks would otherwise route diagonals through the pie.
+        target.draw_line(label.sx, label.sy, rail_x, label.sy, std::max(1.0f, fs * 0.09f), leader);
+        target.draw_line(rail_x, label.sy, kx, elbow_y, std::max(1.0f, fs * 0.09f), leader);
+        target.draw_line(kx, elbow_y, tx, elbow_y, std::max(1.0f, fs * 0.09f), leader);
+        auto align = right ? TextAlign::Left : TextAlign::Right;
+        for (std::size_t i = 0; i < label.lines.size(); ++i)
+          target.draw_text(font, tx, label.top + static_cast<float>(i) * lh, label.lines[i],
                            pie_opts_.label_color, align, TextBaseline::Top);
-          }
-        }
-      } else {
-        Color sub = Color::gray(120);
-        // Match vector layout: % fixed below elbow; wrapped lines stack upward.
-        float pct_y = ey + line_gap;
-        float last_label_top = pct_y - label_pct_gap - lh;
-        float first_label_top = last_label_top - static_cast<float>(label_lines.size() - 1) * lh;
-        for (std::size_t li = 0; li < label_lines.size(); ++li) {
-          font.draw_text(img, tx, first_label_top + static_cast<float>(li) * lh, label_lines[li],
-                         pie_opts_.label_color, align, TextBaseline::Top);
-        }
-        font.draw_text(img, tx, pct_y, line2, sub, align, TextBaseline::Top);
+        if (!label.percentage.empty())
+          target.draw_text(font, tx, label.top + label.height - lh, label.percentage,
+                           Color::gray(120), align, TextBaseline::Top);
       }
     }
   }
 
-  if (pie_opts_.show_legend && !drawn.empty()) {
-    float box = 10.0f;
-    float gap = 8.0f;
-    float row_h = box + gap;
-    float legend_h = static_cast<float>(drawn.size()) * row_h;
-    float y = static_cast<float>(options_.height) - legend_h - 10.0f;
-    float x = 16.0f;
-
-    if (pie_opts_.legend_position == PieLegendPosition::Right) {
-      x = static_cast<float>(options_.width) - 120.0f;
-      y = static_cast<float>(cy) - static_cast<float>(drawn.size()) * (box + gap) * 0.5f;
-    }
-
-    font.set_size(options_.font_size);
-    for (auto const &d : drawn) {
-      Color sw = d.slice->color;
-      sw.a = 255;
-      img.fill_rect(x, y, box, box, sw);
-      std::ostringstream oss;
-      oss << d.slice->label;
-      if (pie_opts_.show_percentage)
-        oss << " (" << static_cast<int>(d.pct) << "%)";
-      font.draw_text(img, x + box + 6.0f, y + box * 0.5f, oss.str(), pie_opts_.label_color,
-                     TextAlign::Left, TextBaseline::Middle);
-      y += box + gap;
+  if (!legend.items.empty()) {
+    float x = right_legend ? width - legend.width - 10.0f : 10.0f;
+    float y = right_legend ? std::max(static_cast<float>(plot_top), (height - legend.height) * 0.5f)
+                           : height - legend.height - 10.0f;
+    float line = std::max(10.0f, legend_font.line_height());
+    for (auto const &item : legend.items) {
+      if (item.index < drawn.size()) {
+        Color sw = drawn[item.index].slice->color;
+        sw.a = 255;
+        target.fill_rect(x + item.x, y + item.y + (line - 10.0f) * 0.5f, 10.0f, 10.0f, sw);
+      }
+      for (std::size_t i = 0; i < item.lines.size(); ++i)
+        target.draw_text(legend_font, x + item.x + 16.0f, y + item.y + static_cast<float>(i) * line,
+                         item.lines[i], pie_opts_.label_color, TextAlign::Left, TextBaseline::Top);
     }
   }
 
   if (!options_.title.empty()) {
     font.set_size(options_.font_size + 4.0f);
     float tw = font.measure_width(options_.title);
-    float x = (static_cast<float>(img.width()) - tw) * 0.5f;
-    font.draw_text(img, x, 12.0f, options_.title, options_.title_color, TextAlign::Left,
-                   TextBaseline::Top);
+    float x = (static_cast<float>(options_.width) - tw) * 0.5f;
+    target.draw_text(font, x, 12.0f, options_.title, options_.title_color, TextAlign::Left,
+                     TextBaseline::Top);
   }
 
-  return img;
+  return true;
 }
 
 } // namespace insightdock::charts

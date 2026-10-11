@@ -1,7 +1,7 @@
 #
 # Sample OpenWrt feed package for InsightDock Charts for C++.
 #
-# This file is a starting point for packaging InsightDock into an OpenWrt feed —
+# This file is a starting point for packaging InsightDock Charts into an OpenWrt feed —
 # it is not built as part of this repository's own CI. Copy it into your feed
 # (e.g. `package/libs/insightdock/Makefile`), then:
 #   - point PKG_SOURCE_URL at a real tagged release once one exists, and
@@ -25,7 +25,7 @@ PKG_SOURCE_URL:=https://github.com/aavazir/insightdock-charts/archive/refs/tags/
 PKG_HASH:=skip
 PKG_BUILD_DIR:=$(BUILD_DIR)/insightdock-charts-$(PKG_VERSION)
 
-PKG_MAINTAINER:=InsightDock contributors
+PKG_MAINTAINER:=InsightDock Charts contributors
 PKG_LICENSE:=MIT
 PKG_LICENSE_FILES:=LICENSE
 
@@ -40,7 +40,7 @@ define Package/insightdock
 endef
 
 define Package/insightdock/description
-  InsightDock renders pie, bar, line, area, combo, and scatter/bubble charts
+  InsightDock Charts renders pie, bar, line, area, combo, and scatter/bubble charts
   for reports and embedded UIs, with zero mandatory link-time dependencies.
   This package builds the project's size-trimmed core (static library) via
   its plain Makefile, intended for routers and other constrained targets.
@@ -76,7 +76,7 @@ $(Package/insightdock)
 endef
 
 define Package/insightdock-dev/description
-  Public headers for building against InsightDock's static library
+  Public headers for building against InsightDock Charts' static library
   (include/insightdock/, umbrella header insightdock/charts.h).
 endef
 

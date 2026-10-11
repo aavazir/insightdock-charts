@@ -5,6 +5,9 @@ on:
     branches: [main]
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   lint:
     runs-on: ubuntu-latest
@@ -80,6 +83,46 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - run: ./scripts/check_version.sh
+
+  pdf:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Fetch pinned PoDoFo 1.2 source
+        uses: actions/checkout@v7
+        with:
+          repository: podofo/podofo
+          ref: 00f86c8ad7b78430b25ad2c81edb704ae8daa6ea
+          path: build-dependencies/podofo
+          submodules: recursive
+          persist-credentials: false
+      - name: Install PDF dependencies
+        run: >
+          sudo apt-get update -qq && sudo apt-get install -y -qq
+          libssl-dev libfreetype-dev libfontconfig1-dev libxml2-dev zlib1g-dev
+          libjpeg-dev libpng-dev libtiff-dev
+      - name: Build and install PoDoFo
+        run: |
+          cmake -S build-dependencies/podofo -B build-dependencies/build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX="$GITHUB_WORKSPACE/build-dependencies/install" \
+            -DPODOFO_BUILD_LIB_ONLY=ON -DPODOFO_WITH_AFDKO=OFF
+          cmake --build build-dependencies/build --parallel 2
+          cmake --install build-dependencies/build
+      - name: Build PDF-enabled InsightDock Charts
+        run: |
+          cmake -B build-pdf -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_PREFIX_PATH="$GITHUB_WORKSPACE/build-dependencies/install" \
+            -DINSIGHTDOCK_WITH_PODOFO=ON -DINSIGHTDOCK_BUILD_TESTS=ON
+          cmake --build build-pdf --parallel 2
+      - name: Test PDF output and installed consumer
+        env:
+          LD_LIBRARY_PATH: ${{ github.workspace }}/build-dependencies/install/lib
+        run: |
+          ctest --test-dir build-pdf --output-on-failure
+          ./build-pdf/podofo_report_example
+          test -s chart_report.pdf
+          test -s report_builder_example.pdf
 
   sanitizers:
     runs-on: ubuntu-latest

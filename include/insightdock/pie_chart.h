@@ -22,7 +22,7 @@ namespace insightdock::charts {
 /** @brief One slice of a @ref PieChart. */
 struct PieSlice {
   std::string label;  ///< Slice label (legend and on-chart text).
-  double value = 0.0; ///< Numeric value (need not sum to 100; percentages computed from total).
+  double value = 0.0; ///< Nonnegative value; negative/NaN/infinity inputs are stored as zero.
   Color color;        ///< Fill color (set automatically when using add_slice without color).
 };
 
@@ -39,9 +39,9 @@ enum class PieLegendPosition {
  * external labels with percentages.
  */
 struct PieOptions {
-  double center_x = 0.0;    ///< Pie center X (0 = auto-center in plot).
-  double center_y = 0.0;    ///< Pie center Y (0 = auto-center in plot).
-  double radius = 0.0;      ///< Pie radius in pixels (0 = auto-fit, reserving margin for labels).
+  double center_x = 0.0;    ///< Pie center X (both coordinates 0 = auto-center at render time).
+  double center_y = 0.0;    ///< Pie center Y (both coordinates 0 = auto-center at render time).
+  double radius = 0.0;      ///< Pie radius (0 = auto-fit with room for title, legend and callouts).
   double gap_degrees = 0.0; ///< Angular gap between slices in degrees.
   bool skip_zero = true;    ///< Omit slices with value ≤ 0.
   /**
@@ -53,14 +53,19 @@ struct PieOptions {
   double inner_radius_ratio = 0.0;
 
   PaletteKind palette = PaletteKind::Tableau10; ///< Color cycle for auto-colored slices.
-  bool show_labels = true;                      ///< Draw slice labels on the chart.
-  bool show_percentage = true;                  ///< Include percentage in labels.
-  bool show_legend = true;                      ///< Draw a legend.
+  /**
+   * Draw measured external callouts, separated vertically outside the pie. Overfull columns
+   * keep larger slices first (input-order ties); blocks that cannot fit are omitted in full.
+   * Slice geometry and legend entries remain independent of callout visibility.
+   */
+  bool show_labels = true;
+  bool show_percentage = true; ///< Include percentage in labels.
+  bool show_legend = true;     ///< Draw a measured, wrapped legend with +N more overflow.
   PieLegendPosition legend_position = PieLegendPosition::Bottom;
 
-  float fill_opacity = 0.6f;                  ///< Slice fill alpha (0–1).
-  Color stroke_color = Color::white();        ///< Outline between slices.
-  float stroke_width = 2.0f;                  ///< Slice outline width in pixels.
+  float fill_opacity = 0.6f;           ///< Multiplier for slice color alpha (clamped to 0–1).
+  Color stroke_color = Color::white(); ///< Outline between slices.
+  float stroke_width = 2.0f;           ///< Slice outline width in pixels.
   Color label_color = Color::rgb(34, 34, 34); ///< Label text color.
   float label_font_size = 11.0f;              ///< Label font size in pixels.
 
@@ -84,6 +89,9 @@ struct PieOptions {
  */
 class INSIGHTDOCK_API PieChart : public Chart {
 public:
+  VectorCapability vector_capability() const noexcept override {
+    return VectorCapability::Native;
+  }
   std::unique_ptr<Chart> clone() const override {
     return std::make_unique<PieChart>(*this);
   }
@@ -125,6 +133,8 @@ public:
 
   /** @brief Render the pie chart to RGBA pixels. */
   ImageBuffer render() const override;
+  /** @brief Draw the same pie geometry, labels and styles into a raster or vector target. */
+  bool draw(DrawTarget &target) const override;
 
 private:
   std::vector<PieSlice> slices_;

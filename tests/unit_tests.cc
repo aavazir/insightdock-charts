@@ -104,6 +104,21 @@ static void test_scale_linear_nice_covers_data() {
   auto s = Scale::linear_nice(3.0, 97.0, 0.0f, 400.0f);
   CHECK(s.min() <= 3.0);
   CHECK(s.max() >= 97.0);
+  // Gallery scatter extents used to round inward to 20 (x) and 20 (y), putting valid
+  // points in the axis and legend margins. Exercise positive, negative and one-tick domains.
+  for (auto bounds : {std::pair<double, double>{12, 95}, {15, 55}, {-95, -12}, {-9, 12}, {0, 95}}) {
+    for (int hint : {1, 2, 6, 8}) {
+      auto axis = Scale::linear_nice(bounds.first, bounds.second, 0, 400, hint);
+      CHECK(axis.min() <= bounds.first);
+      CHECK(axis.max() >= bounds.second);
+      CHECK(axis.max() > axis.min());
+      for (double value : {bounds.first, bounds.second}) {
+        CHECK(axis.to_pixel(value) >= 0);
+        CHECK(axis.to_pixel(value) <= 400);
+      }
+    }
+  }
+  CHECK(Scale::linear_nice(0, 95, 0, 400, 6).min() == 0);
 }
 
 static void test_scale_linear_nice_equal_values() {
@@ -306,12 +321,15 @@ static void test_svg_vector_doughnut_paints_hole_in_background() {
   CHECK(s.rfind("<circle") > s.rfind("<path")); // hole is drawn after the slices
 }
 
-static void test_svg_vector_scatter_falls_back_to_raster() {
+static void test_svg_vector_scatter_draws_natively() {
   ScatterChart sc;
   sc.options().width = 200;
   sc.options().height = 150;
   sc.add_series("p", {{1, 1}, {2, 3}});
-  CHECK(has(vector_svg(sc), "base64")); // no vector path yet
+  auto output = vector_svg(sc);
+  CHECK(!has(output, "base64"));
+  CHECK(has(output, "<circle"));
+  CHECK(has(output, "<text"));
 }
 
 // ---------------------------------------------------------------------------
@@ -797,8 +815,8 @@ static void test_image_buffer_draw_dashed_line_empty_dash_is_solid() {
 static void test_image_buffer_draw_dashed_line_leaves_gaps() {
   ImageBuffer buf(60, 4);
   buf.clear(Color::rgba(0, 0, 0, 0));
-  // 6px on, 6px off, starting at x=0 along a straight horizontal line.
-  buf.draw_dashed_line(0.0f, 2.0f, 59.0f, 2.0f, 1.0f, {0, 0, 0, 255}, {6.0f, 6.0f});
+  // 6px on, 6px off; align the 1px stroke with pixel centers for an opaque interior.
+  buf.draw_dashed_line(0.0f, 2.5f, 59.0f, 2.5f, 1.0f, {0, 0, 0, 255}, {6.0f, 6.0f});
 
   bool saw_opaque = false;
   bool saw_gap = false;
@@ -2289,12 +2307,50 @@ static void test_pdf_vector_unencodable_text_does_not_abort() {
   vector_pdf(bar); // must still produce a valid one-page PDF
 }
 
-static void test_pdf_vector_scatter_still_embeds_raster() {
+static void test_pdf_vector_scatter_draws_natively() {
   ScatterChart sc;
   sc.options().width = 200;
   sc.options().height = 150;
   sc.add_series("p", {{1, 1}, {2, 3}});
-  CHECK(vector_pdf(sc).find("/Image") != std::string::npos);
+  CHECK(vector_pdf(sc).find("/Image") == std::string::npos);
+}
+
+static void test_pdf_vector_pie_preserves_styles_and_text() {
+  PieChart pie;
+  pie.options().width = 500;
+  pie.options().height = 400;
+  pie.options().title = "Pie style parity";
+  auto options = pie.pie_options();
+  options.show_labels = false;
+  options.show_legend = false;
+  options.fill_opacity = 0.5f;
+  options.stroke_color = Color::rgb(102, 153, 204);
+  options.stroke_width = 3.5f;
+  options.data_labels.enabled = true;
+  options.data_labels.decimals = 2;
+  pie.set_pie_options(options);
+  Color fill = Color::rgb(204, 51, 102);
+  fill.a = 128;
+  pie.add_slice("A", 60.0, fill);
+  pie.add_slice("B", 40.0, Color::rgb(17, 34, 51));
+  auto bytes = vector_pdf(pie);
+  CHECK(bytes.find("/Image") == std::string::npos);
+  CHECK(bytes.find("/ExtGState") != std::string::npos);
+  PoDoFo::PdfMemDocument doc;
+  doc.LoadFromBuffer(PoDoFo::bufferview(bytes.data(), bytes.size()));
+  auto &page = doc.GetPages().GetPageAt(0);
+  std::vector<PoDoFo::PdfTextEntry> entries;
+  page.ExtractTextTo(entries);
+  std::string text;
+  for (auto const &entry : entries)
+    text += entry.Text + '\n';
+  CHECK(text.find("60.00") != std::string::npos);
+  CHECK(text.find("40.00") != std::string::npos);
+  CHECK(text.find("Pie style parity") != std::string::npos);
+  auto content = page.MustGetContents().GetCopy();
+  std::string commands(content.begin(), content.end());
+  CHECK(commands.find("0.8 0.2 0.4 rg") != std::string::npos);
+  CHECK(commands.find("0.4 0.6 0.8 RG") != std::string::npos);
 }
 #endif
 
@@ -2552,7 +2608,8 @@ int main() {
 #ifdef INSIGHTDOCK_HAS_PODOFO
   test_pdf_vector_cartesian_charts_have_no_embedded_image();
   test_pdf_vector_unencodable_text_does_not_abort();
-  test_pdf_vector_scatter_still_embeds_raster();
+  test_pdf_vector_scatter_draws_natively();
+  test_pdf_vector_pie_preserves_styles_and_text();
 #endif
   test_supersampled_export_does_not_mutate_chart_and_is_thread_safe();
 #ifdef INSIGHTDOCK_FONT_LATIN
@@ -2638,7 +2695,7 @@ int main() {
   test_svg_vector_bar_chart_is_native();
   test_svg_vector_line_chart_is_native();
   test_svg_vector_area_and_combo_are_native();
-  test_svg_vector_scatter_falls_back_to_raster();
+  test_svg_vector_scatter_draws_natively();
   test_svg_vector_doughnut_paints_hole_in_background();
 
   // PieChart doughnut cutout

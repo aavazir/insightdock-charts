@@ -1,7 +1,7 @@
 # Troubleshooting
 
 Answers to the problems that actually come up when building, installing, or extending
-InsightDock — as opposed to a hypothetical FAQ. Each entry below was a real incident.
+InsightDock Charts — as opposed to a hypothetical FAQ. Each entry below was a real incident.
 
 ## `bad_alloc` / `length_error` from `ChartExporter::save()` after a routine rebuild
 

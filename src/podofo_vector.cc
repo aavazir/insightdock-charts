@@ -3,6 +3,8 @@
 
 #include "insightdock/pdf/podofo_vector.h"
 #include "insightdock/detail/math_constants.h"
+#include "insightdock/detail/text_wrap.h"
+#include "insightdock/detail/tick_format.h"
 
 #include "insightdock/color.h"
 #include "insightdock/pdf/podofo_adapter.h"
@@ -80,81 +82,13 @@ struct PlacedLabel {
   double ex = 0.0;
 };
 
-double measure_text_pt(PoDoFo::PdfFont &font, PoDoFo::PdfPainter &painter,
-                       std::string const &text) {
-  if (text.empty())
-    return 0.0;
-  return font.GetStringLength(text, painter.TextState);
-}
-
-void append_wrapped_token_pt(PoDoFo::PdfFont &font, PoDoFo::PdfPainter &painter,
-                             double max_width_pt, std::string const &token, std::string &cur,
-                             std::vector<std::string> &out) {
-  if (token.empty())
-    return;
-  if (cur.empty()) {
-    for (char c : token) {
-      std::string next = cur + c;
-      if (!cur.empty() && measure_text_pt(font, painter, next) > max_width_pt) {
-        out.push_back(cur);
-        cur = std::string(1, c);
-      } else {
-        cur = next;
-      }
-    }
-    return;
-  }
-  std::string spaced = cur + ' ' + token;
-  if (measure_text_pt(font, painter, spaced) <= max_width_pt) {
-    cur = spaced;
-    return;
-  }
-  if (!cur.empty()) {
-    out.push_back(cur);
-    cur.clear();
-  }
-  append_wrapped_token_pt(font, painter, max_width_pt, token, cur, out);
-}
-
 std::vector<std::string> wrap_pie_label(PoDoFo::PdfFont &font, PoDoFo::PdfPainter &painter,
                                         double font_pt, std::string const &text,
                                         double max_width_pt) {
-  if (text.empty())
-    return {};
   painter.TextState.SetFont(font, font_pt);
-  if (max_width_pt <= 1.0)
-    return {text};
-
-  std::vector<std::string> out;
-  std::size_t para_start = 0;
-  while (para_start <= text.size()) {
-    auto para_end = text.find('\n', para_start);
-    std::string para = (para_end == std::string::npos)
-                           ? text.substr(para_start)
-                           : text.substr(para_start, para_end - para_start);
-
-    std::string cur;
-    std::size_t i = 0;
-    while (i < para.size()) {
-      while (i < para.size() && para[i] == ' ')
-        ++i;
-      if (i >= para.size())
-        break;
-      auto j = para.find(' ', i);
-      append_wrapped_token_pt(font, painter, max_width_pt,
-                              j == std::string::npos ? para.substr(i) : para.substr(i, j - i), cur,
-                              out);
-      i = j == std::string::npos ? para.size() : j + 1;
-    }
-    if (!cur.empty())
-      out.push_back(cur);
-    if (para_end == std::string::npos)
-      break;
-    para_start = para_end + 1;
-  }
-  if (out.empty())
-    return {text};
-  return out;
+  return detail::wrap_text(text, max_width_pt, [&](std::string const &line) {
+    return font.GetStringLength(line, painter.TextState);
+  });
 }
 
 double widest_line(PoDoFo::PdfFont &font, PoDoFo::PdfPainter &painter, double font_pt,
@@ -220,15 +154,14 @@ void draw_internal_legend(PoDoFo::PdfPainter &painter, PoDoFo::PdfFont &font,
     painter.GraphicsState.SetNonStrokingColor(slice_fill(slices[i].color_index, opts.palette, 1.0));
     painter.DrawRectangle(lx, cy - sw * 0.5, sw, sw, PoDoFo::PdfPathDrawMode::Fill);
 
-    char buf[160];
+    std::string label =
+        slices[i].label + ": " + detail::format_label_value(slices[i].value, TickFormat::Raw, 0);
     if (opts.show_percentage)
-      std::snprintf(buf, sizeof(buf), "%s: %.0f (%.1f%%)", slices[i].label.c_str(), slices[i].value,
-                    slices[i].frac * 100.0);
-    else
-      std::snprintf(buf, sizeof(buf), "%s: %.0f", slices[i].label.c_str(), slices[i].value);
+      label +=
+          " (" + detail::format_label_value(slices[i].frac * 100.0, TickFormat::Percent, 1) + ")";
 
     painter.GraphicsState.SetNonStrokingColor(to_pdf_color(40, 40, 40));
-    painter.DrawText(buf, lx + sw + gap, cy - font_pt * 0.3);
+    painter.DrawText(label, lx + sw + gap, cy - font_pt * 0.3);
   }
 
   (void)legend_h;
@@ -365,22 +298,21 @@ void draw_pie_impl(PoDoFo::PdfDocument &doc, PoDoFo::PdfPainter &painter,
 
   cum = 0.0;
   for (auto const &s : slices) {
-    if (opts.min_label_frac > 0.0 && s.frac < opts.min_label_frac)
+    if (opts.min_label_frac > 0.0 && s.frac < opts.min_label_frac) {
+      cum += s.frac;
       continue;
+    }
 
     double mid = M_PI / 2.0 - 2.0 * M_PI * (cum + s.frac * 0.5);
     double ca = std::cos(mid);
     double sa = std::sin(mid);
     bool right = ca >= 0.0;
 
-    char l1[160];
-    std::snprintf(l1, sizeof(l1), "%s: %.0f", s.label.c_str(), s.value);
+    std::string l1 = s.label + ": " + detail::format_label_value(s.value, TickFormat::Raw, 0);
 
     std::string l2;
     if (opts.show_percentage) {
-      char buf[32];
-      std::snprintf(buf, sizeof(buf), "%.1f%%", s.frac * 100.0);
-      l2 = buf;
+      l2 = detail::format_label_value(s.frac * 100.0, TickFormat::Percent, 1);
     }
 
     double sx = cx + radius * ca;
@@ -544,19 +476,28 @@ void draw_chart_vector(PoDoFo::PdfDocument &doc, PoDoFo::PdfPainter &painter, Ch
     draw_pie(doc, painter, *pie, x, y, w, h, pie_opts, fonts);
     return;
   }
-
+  auto const &o = chart.options();
   {
-    // Cartesian charts (bar/line/area/combo) draw natively into the PDF; the target saves and
-    // restores the painter state around the chart.
-    auto const &o = chart.options();
     PdfTarget target(doc, painter, static_cast<float>(o.width), static_cast<float>(o.height), x, y,
                      w, h, fonts.regular);
     if (chart.draw(target))
       return;
   }
+  draw_chart(doc, painter, chart.render(), x, y, w, h);
+}
 
-  ImageBuffer img = chart.render();
-  draw_chart(doc, painter, img, x, y, w, h);
+void draw_chart_vector(PoDoFo::PdfDocument &doc, PoDoFo::PdfPainter &painter, Chart const &chart,
+                       double x, double y, double w, double h) {
+  {
+    // Pie and Cartesian charts draw natively into the PDF; the target saves and
+    // restores the painter state around the chart.
+    auto const &o = chart.options();
+    PdfTarget target(doc, painter, static_cast<float>(o.width), static_cast<float>(o.height), x, y,
+                     w, h);
+    if (chart.draw(target))
+      return;
+  }
+  draw_chart(doc, painter, chart.render(), x, y, w, h);
 }
 
 } // namespace insightdock::charts::podofo

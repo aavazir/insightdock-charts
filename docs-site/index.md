@@ -6,7 +6,7 @@
 ![Line chart](img/gallery/line_chart.png){ width="32%" }
 ![Pie chart](img/gallery/pie_chart.png){ width="32%" }
 
-InsightDock renders from a daemon, CLI tool, container or router: no window, no Qt, no Python. SVG and PDF output contains real paths and selectable text for pie, bar, line, area and combo charts. The core needs only the C++17 standard library, and a Make build targets OpenWrt.
+InsightDock Charts renders from a daemon, CLI tool, container or router: no window, no Qt, no Python. SVG and PDF output contains real paths and selectable text for pie, bar, line, area and combo charts. The core needs only the C++17 standard library, and a Make build targets OpenWrt.
 
 It is static output only. For interactive zoom and pan, see the [comparison](comparison.md) for better-suited libraries.
 

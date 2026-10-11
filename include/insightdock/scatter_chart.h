@@ -78,6 +78,9 @@ struct ScatterOptions {
  */
 class INSIGHTDOCK_API ScatterChart : public Chart {
 public:
+  VectorCapability vector_capability() const noexcept override {
+    return VectorCapability::Native;
+  }
   std::unique_ptr<Chart> clone() const override {
     return std::make_unique<ScatterChart>(*this);
   }
@@ -114,6 +117,9 @@ public:
 
   /** @brief Render axes, grid, legend, and markers to RGBA. */
   ImageBuffer render() const override;
+
+  /** @brief Draw axes, legend and scatter/bubble marks into any backend. */
+  bool draw(DrawTarget &target) const override;
 
 private:
   std::vector<ScatterSeries> series_;

@@ -111,13 +111,22 @@ INSIGHTDOCK_API void draw_pie_slices(PoDoFo::PdfDocument &doc, PoDoFo::PdfPainte
 /**
  * @brief Draw any @ref Chart using vectors when supported, else raster embed.
  *
- * Pie charts use their dedicated vector pipeline; bar, line, area and combo charts draw natively
- * through @ref PdfTarget. Other chart types (scatter) fall back to PNG embed via @ref draw_chart.
+ * An explicit @p pie_opts selects the legacy PDF-specific pie layout. For shared raster/SVG/PDF
+ * layout use the overload without PieVectorOptions. Cartesian charts draw through @ref PdfTarget;
+ * unsupported chart types fall back to PNG embed via @ref draw_chart.
  */
 INSIGHTDOCK_API void draw_chart_vector(PoDoFo::PdfDocument &doc, PoDoFo::PdfPainter &painter,
                                        Chart const &chart, double x, double y, double w, double h,
-                                       PieVectorOptions const &pie_opts = {},
-                                       PdfVectorFonts fonts = {});
+                                       PieVectorOptions const &pie_opts, PdfVectorFonts fonts = {});
+
+/**
+ * @brief Draw using the chart's shared layout and styles, including pie colors and data labels.
+ *
+ * This overload is used by ChartExporter. Passing an explicit PieVectorOptions to the other
+ * overload selects the legacy PDF-specific pie layout, also exposed by draw_pie/draw_pie_slices.
+ */
+INSIGHTDOCK_API void draw_chart_vector(PoDoFo::PdfDocument &doc, PoDoFo::PdfPainter &painter,
+                                       Chart const &chart, double x, double y, double w, double h);
 
 } // namespace insightdock::charts::podofo
 

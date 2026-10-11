@@ -28,7 +28,7 @@ FONT_MODE      ?= embedded
 CXXFLAGS ?= -std=c++17 -O2 -Wall -Wextra
 # Header dependency tracking so editing a public header rebuilds dependants.
 DEPFLAGS  = -MMD -MP
-INCLUDES  = -I include -I third_party
+INCLUDES  = -I include -isystem third_party
 
 # ── Core sources (always compiled) ────────────────────────────────────────────
 SRCS = \

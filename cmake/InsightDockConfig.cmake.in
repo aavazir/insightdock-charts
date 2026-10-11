@@ -8,4 +8,4 @@ endif()
 
 include("${CMAKE_CURRENT_LIST_DIR}/InsightDockChartsTargets.cmake")
 
-check_required_components(InsightDockCharts)
+check_required_components(InsightDock)

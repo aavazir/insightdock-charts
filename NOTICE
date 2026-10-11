@@ -4,17 +4,20 @@ InsightDock Charts for C++
 This project bundles or references the following third-party components:
 
 stb_truetype.h / stb_image_write.h
-  Public domain / MIT (see third_party/ headers)
+  Public domain / MIT (see LICENSES/stb.txt and third_party/ headers)
 
 stb_image.h (tests/third_party/, used only by the test suite, never shipped)
   Public domain / MIT
 
-Embedded font subset (include/insightdock/embedded_font.h)
-  DejaVu Sans, subsetted to printable ASCII (U+0020-U+007E) with fonttools'
-  pyftsubset (regeneration command in the header's comment). DejaVu Sans is
+Embedded font subsets (include/insightdock/embedded_font.h and embedded_font_latin.h)
+  DejaVu Sans, subsetted to printable ASCII (U+0020-U+007E), or optionally
+  ASCII plus Latin-1 and Latin Extended-A, with fonttools' pyftsubset
+  (regeneration commands in the headers' comments). DejaVu Sans is
   derived from Bitstream Vera and distributed under a permissive license that
   explicitly allows embedding, redistribution, and modification (including
-  subsetting); see https://dejavu-fonts.github.io/License.html.
+  subsetting). The copyright, trademark and permission notices are included
+  in LICENSES/Bitstream-Vera.txt and installed with the library. See
+  https://dejavu-fonts.github.io/License.html.
 
 PoDoFo (optional PDF backend)
   Not vendored. External dependency when INSIGHTDOCK_WITH_PODOFO=ON.

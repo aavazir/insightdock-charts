@@ -1,0 +1,326 @@
+{
+  "repository": "aavazir/insightdock-charts",
+  "created": "2026-10-11",
+  "m1_status": "active-not-complete",
+  "children": [
+    {
+      "key": "m1-fonts",
+      "title": "[M1] Preserve font fidelity in native SVG/PDF and report missing glyphs",
+      "depends": [],
+      "area": "rendering",
+      "criteria": [
+        "Embed/subset the chart TTF in PDF with Unicode mapping; provide embedded-font or glyph-outline SVG output.",
+        "Share measurement, glyph fallback, advances, baselines, multiline and rotated text behavior with raster rendering.",
+        "Expose actionable missing-glyph diagnostics and document outline versus selectable-text behavior.",
+        "Verify embedded/default/Latin/custom fonts with independent renderers and PDF text extraction."
+      ]
+    },
+    {
+      "key": "m1-collisions",
+      "title": "[M1] Define general axis and data-label collision policies",
+      "depends": [
+        "m1-fonts"
+      ],
+      "area": "layout",
+      "criteria": [
+        "Specify deterministic behavior for dense ticks and mark labels: preserve, skip or reposition with documented defaults.",
+        "Fit labels on small canvases and preserve explicit multiline and UTF-8 boundaries.",
+        "Cover line/bar/area/combo/scatter/bubble; retain the completed pie/legend policies.",
+        "Add regression cases for dense, negative, log and long-label inputs across raster/vector output."
+      ]
+    },
+    {
+      "key": "m1-legacy-pdf",
+      "title": "[M1] Bring legacy PDF pie helpers onto shared layout and style contracts",
+      "depends": [
+        "m1-fonts"
+      ],
+      "area": "pdf",
+      "criteria": [
+        "Map legacy PieVectorOptions layout/overlap settings to shared pie layout without silently dropping options.",
+        "Preserve injected report fonts, colors/alpha, strokes, doughnut geometry and labels.",
+        "Document source compatibility and any unavoidable default changes.",
+        "Test direct draw_pie/draw_pie_slices and explicit-options draw_chart_vector against shared exports."
+      ]
+    },
+    {
+      "key": "m1-validation",
+      "title": "[M1] Add public input validation with strict and permissive diagnostics",
+      "depends": [],
+      "area": "api",
+      "criteria": [
+        "Review a public validation design with diagnostic code, severity and affected series/point/option identity.",
+        "Cover invalid dimensions/options, mismatched series, nonfinite data, invalid log domains, UTF-8 and unavailable glyphs.",
+        "Strict mode rejects invalid input before export; permissive mode reports skipped/repaired values with documented missing-data semantics.",
+        "Retain current source behavior by default and test diagnostics and export failure propagation."
+      ]
+    },
+    {
+      "key": "m1-budgets",
+      "title": "[M1] Enforce configurable rendering and output resource budgets",
+      "depends": [
+        "m1-validation"
+      ],
+      "area": "reliability",
+      "criteria": [
+        "Specify limits for logical/supersampled pixels, point counts, label bytes/counts and encoded output.",
+        "Check limits before expensive allocations/work and across PNG/JPEG/SVG/PDF and fallback paths.",
+        "Return actionable structured diagnostics/errors without mutating input.",
+        "Exercise boundary and overflow cases, supersampling, long labels and large point sets; document embedded budgets."
+      ]
+    },
+    {
+      "key": "m1-backend-tests",
+      "title": "[M1] Automate independent SVG/PDF rendering and extracted-text checks",
+      "depends": [
+        "m1-fonts",
+        "m1-collisions",
+        "m1-legacy-pdf"
+      ],
+      "area": "testing",
+      "criteria": [
+        "Render representative native SVG and PDF with independent readers and compare to raster with justified tolerances.",
+        "Check fonts/text, rotated/multiline labels, colors/opacity, geometry, crowded layouts and all built-in chart families.",
+        "Extract PDF text; verify native output contains no unintended raster images.",
+        "Run the checks in CI and retain failure artifacts; distinguish image-object checks from visual fidelity evidence."
+      ]
+    },
+    {
+      "key": "m1-install",
+      "title": "[M1] Verify FetchContent and Conan installation workflows",
+      "depends": [],
+      "area": "packaging",
+      "criteria": [
+        "Document a pinned FetchContent example and test that subdirectory defaults do not build dependency tests/examples.",
+        "Add a Conan recipe with explicit PDF/Latin-font and static/shared configuration.",
+        "Build relocated clean consumers using CMake and pkg-config where supported, with compile definitions and link dependencies.",
+        "Verify installed/source packages include required license notices and usable examples."
+      ]
+    },
+    {
+      "key": "m1-vcpkg",
+      "title": "[M1] Finish and submit the vcpkg port against an immutable release",
+      "depends": [
+        "m1-install",
+        "m1-release-artifacts"
+      ],
+      "area": "packaging",
+      "criteria": [
+        "Replace SHA512 0 with the verified checksum for a published immutable release source artifact.",
+        "Verify default/PDF/Latin-font feature combinations and static/shared consumers.",
+        "Submit the port or appropriate upstream update and record the submission URL.",
+        "Record upstream acceptance separately; a submission is not evidence of registry availability."
+      ]
+    },
+    {
+      "key": "m1-ci-security",
+      "title": "[M1] Verify platform CI and harden dependency and source checks",
+      "depends": [],
+      "area": "ci-security",
+      "criteria": [
+        "Run the exact candidate through Linux x86-64/ARM64, macOS, Windows, static/shared, PDF, Latin-font and minimal Make checks.",
+        "Add Latin-font coverage; review/pin Actions and downloaded tools to immutable revisions/checksums with reviewed update policy.",
+        "Add dependency review and suitable automated source/static security checks; record actionable findings.",
+        "Attach successful remote run URLs and configure required release checks; local successes do not close this gate."
+      ]
+    },
+    {
+      "key": "m1-fuzz",
+      "title": "[M1] Fuzz numeric, UTF-8, primitive and exporter boundaries",
+      "depends": [
+        "m1-validation",
+        "m1-budgets"
+      ],
+      "area": "security-testing",
+      "criteria": [
+        "Add bounded fuzz harnesses for numeric chart input, UTF-8 handling, rendering primitives and export dispatch/boundaries.",
+        "Run sanitizer-backed corpus smoke checks in CI with reproducible seeds and documented local commands.",
+        "Include nonfinite/extreme values, malformed strings, tiny/large dimensions and supersampling/fallback combinations.",
+        "Turn confirmed crashes or contract violations into regressions and triage every unresolved finding."
+      ]
+    },
+    {
+      "key": "m1-docs",
+      "title": "[M1] Lock documentation dependencies and verify fresh API generation",
+      "depends": [],
+      "area": "documentation",
+      "criteria": [
+        "Lock transitive documentation dependencies and document the reviewed update/regeneration workflow.",
+        "Generate MrDocs from current public headers on a clean environment and verify the API reference covers new exports and diagnostics.",
+        "Build documentation in strict mode without relying on previously generated API artifacts.",
+        "Verify API links, guides, gallery and release/upgrade/security documentation match current behavior."
+      ]
+    },
+    {
+      "key": "m1-benchmarks",
+      "title": "[M1] Refresh benchmarks and remove stale product/comparison claims",
+      "depends": [
+        "m1-fonts",
+        "m1-collisions",
+        "m1-budgets"
+      ],
+      "area": "performance-docs",
+      "criteria": [
+        "Record repeated render/encode timings, distributions, peak memory, output sizes, machine/compiler/build/revision metadata.",
+        "Cover supported backends, raw/decimated data, and 1k/10k/100k/1M workloads where bounded and practical.",
+        "Profile the slow pie case before assigning a cause; replace the old unsupported causal explanation.",
+        "Update API/header/benchmark/comparison claims and date competitor checks with primary-source links; avoid unverified publication/performance claims."
+      ]
+    },
+    {
+      "key": "m1-release-artifacts",
+      "title": "[M1] Produce reproducible release artifacts and clean-source smoke checks",
+      "depends": [
+        "m1-install",
+        "m1-docs",
+        "m1-ci-security"
+      ],
+      "area": "release",
+      "criteria": [
+        "Generate source archives and checksums reproducibly from an explicit committed revision; exclude build/generated/private files.",
+        "Build and install from the produced archive in a clean workspace, including core/PDF/font features and consumers.",
+        "Include licenses/notices, changelog and upgrade guidance and test example outputs.",
+        "Use the tested artifact/revision for an RC; record checksums, archive smoke logs and immutable publication coordinates."
+      ]
+    },
+    {
+      "key": "m1-release-verification",
+      "title": "[M1] Verify release publication, documentation and final acceptance",
+      "depends": [
+        "m1-backend-tests",
+        "m1-vcpkg",
+        "m1-ci-security",
+        "m1-fuzz",
+        "m1-docs",
+        "m1-benchmarks",
+        "m1-release-artifacts"
+      ],
+      "area": "release",
+      "criteria": [
+        "Review all original M1 roadmap items and record evidence or an explicit maintainer scope decision for each.",
+        "Confirm public repository, exact tested tag/commit, attached release artifacts/checksums and deployed documentation/gallery.",
+        "Verify version/license/security/upgrade metadata and a fresh consumer install from the published artifacts.",
+        "Close M1 only after implementation AND release evidence are complete; record external submission/acceptance statuses honestly."
+      ]
+    }
+  ],
+  "later": [
+    {
+      "key": "m2",
+      "title": "[M2] Common 2D workflow parity — deferred until M1 acceptance",
+      "body": "Outcome: one-call export of a polished 2x2 analytics figure to PNG/SVG/PDF without manual pixel placement.\n\nPlanned scope:\n- Shared AxisOptions: bounds, reversal, visibility, custom ticks/formatters.\n- Numeric continuous line/area x positions and shared scatter log/time axes, overlays and per-series styles.\n- Measure/layout/draw stages, backend clipping, arbitrary text angles and calendar/timezone tick policies.\n- Figures/subplots with aligned areas, shared axes/legends and captions.\n- Text/arrow annotations; series IDs and replace/remove/update APIs.\n- DPI/physical dimensions, PDF paper/orientation and transparency contracts.\n\nNative scatter/bubble and strict vector fallback are already locally implemented; retain their regressions. Create focused child issues and a small axis/figure design proposal when this tracker becomes active. No release version or delivery date is promised."
+    },
+    {
+      "key": "m3",
+      "title": "[M3] Statistical and business chart breadth — deferred",
+      "body": "Outcome: documented statistical/reporting semantics with matching raster/vector output.\n\nDelivery order:\n1. Asymmetric x/y error bars and lower/upper uncertainty ribbons.\n2. Heatmaps with normalization, sequential/diverging color scales, missing cells and colorbars.\n3. Box plots with explicit quartiles, whiskers and outliers.\n4. Histogram custom edges, weights, density/probability and cumulative variants.\n5. Waterfall, floating/range bars and Pareto.\n6. Demand-led polar/radar, Gantt, gauges and treemap; contours after continuous-axis and heatmap foundations.\n\nDepends on M2 axis/layout/clipping foundations. Each family needs an API guide, example, gallery, numeric/render regressions, missing-value semantics, resource limits and install integration. Split into child issues when promoted; no delivery dates."
+    },
+    {
+      "key": "m4",
+      "title": "[M4] Accessible output and ecosystem integrations — deferred",
+      "body": "Outcome: accessible, international and embeddable reporting with documented lifecycle/error behavior.\n\nPlanned scope:\n- SVG title/description metadata and CSV/data-table companion exports.\n- Patterns/markers and grayscale/colorblind reporting guidance.\n- Optional shaping, RTL and fallback fonts.\n- C ABI and optional Python wrapper; WASM builds/examples.\n- Pixel-aware decimation preserving gaps/spikes/original x positions.\n- Large-data and embedded memory/throughput benchmarks.\n- Additional distributions based on adopter demand.\n\nPlan after M1 and prioritize against demonstrated users; do not infer fixed release dates. Conan and the existing vcpkg port remain M1 packaging work, not silently deferred here."
+    },
+    {
+      "key": "later",
+      "title": "[Later] Finance, interaction and specialized output — demand-led backlog",
+      "body": "Deferred workstreams, with no release commitments:\n\n- Finance: OHLC/candlestick and volume panels with shared time axes; validated SMA/EMA/RSI/MACD/Bollinger/ATR/stochastic; independent panels, trends and annotations.\n- Interaction: original series/point hit-test identity, consumer-driven zoom/pan and incremental updates; browser wrapper only after identity/interaction contracts exist.\n- Specialized output: EPS/PostScript and C++ source-array export with a concrete use case; evaluate 3D separately.\n\nFinance depends on M2 time axes and subplot composition. Interaction depends on series identity and lifecycle. Activate individual proposals only with a maintainer-reviewed workflow and acceptance criteria."
+    }
+  ],
+  "github": {
+    "m1": {
+      "number": 5,
+      "url": "https://github.com/aavazir/insightdock-charts/issues/5",
+      "title": "[M1] Reliability, installation and release readiness — completion tracker"
+    },
+    "m1-fonts": {
+      "number": 6,
+      "url": "https://github.com/aavazir/insightdock-charts/issues/6",
+      "title": "[M1] Preserve font fidelity in native SVG/PDF and report missing glyphs"
+    },
+    "m1-collisions": {
+      "number": 7,
+      "url": "https://github.com/aavazir/insightdock-charts/issues/7",
+      "title": "[M1] Define general axis and data-label collision policies"
+    },
+    "m1-legacy-pdf": {
+      "number": 8,
+      "url": "https://github.com/aavazir/insightdock-charts/issues/8",
+      "title": "[M1] Bring legacy PDF pie helpers onto shared layout and style contracts"
+    },
+    "m1-validation": {
+      "number": 9,
+      "url": "https://github.com/aavazir/insightdock-charts/issues/9",
+      "title": "[M1] Add public input validation with strict and permissive diagnostics"
+    },
+    "m1-budgets": {
+      "number": 10,
+      "url": "https://github.com/aavazir/insightdock-charts/issues/10",
+      "title": "[M1] Enforce configurable rendering and output resource budgets"
+    },
+    "m1-backend-tests": {
+      "number": 11,
+      "url": "https://github.com/aavazir/insightdock-charts/issues/11",
+      "title": "[M1] Automate independent SVG/PDF rendering and extracted-text checks"
+    },
+    "m1-install": {
+      "number": 12,
+      "url": "https://github.com/aavazir/insightdock-charts/issues/12",
+      "title": "[M1] Verify FetchContent and Conan installation workflows"
+    },
+    "m1-vcpkg": {
+      "number": 13,
+      "url": "https://github.com/aavazir/insightdock-charts/issues/13",
+      "title": "[M1] Finish and submit the vcpkg port against an immutable release"
+    },
+    "m1-ci-security": {
+      "number": 14,
+      "url": "https://github.com/aavazir/insightdock-charts/issues/14",
+      "title": "[M1] Verify platform CI and harden dependency and source checks"
+    },
+    "m1-fuzz": {
+      "number": 15,
+      "url": "https://github.com/aavazir/insightdock-charts/issues/15",
+      "title": "[M1] Fuzz numeric, UTF-8, primitive and exporter boundaries"
+    },
+    "m1-docs": {
+      "number": 16,
+      "url": "https://github.com/aavazir/insightdock-charts/issues/16",
+      "title": "[M1] Lock documentation dependencies and verify fresh API generation"
+    },
+    "m1-benchmarks": {
+      "number": 17,
+      "url": "https://github.com/aavazir/insightdock-charts/issues/17",
+      "title": "[M1] Refresh benchmarks and remove stale product/comparison claims"
+    },
+    "m1-release-artifacts": {
+      "number": 18,
+      "url": "https://github.com/aavazir/insightdock-charts/issues/18",
+      "title": "[M1] Produce reproducible release artifacts and clean-source smoke checks"
+    },
+    "m1-release-verification": {
+      "number": 19,
+      "url": "https://github.com/aavazir/insightdock-charts/issues/19",
+      "title": "[M1] Verify release publication, documentation and final acceptance"
+    },
+    "m2": {
+      "number": 20,
+      "url": "https://github.com/aavazir/insightdock-charts/issues/20",
+      "title": "[M2] Common 2D workflow parity — deferred until M1 acceptance"
+    },
+    "m3": {
+      "number": 21,
+      "url": "https://github.com/aavazir/insightdock-charts/issues/21",
+      "title": "[M3] Statistical and business chart breadth — deferred"
+    },
+    "m4": {
+      "number": 22,
+      "url": "https://github.com/aavazir/insightdock-charts/issues/22",
+      "title": "[M4] Accessible output and ecosystem integrations — deferred"
+    },
+    "later": {
+      "number": 23,
+      "url": "https://github.com/aavazir/insightdock-charts/issues/23",
+      "title": "[Later] Finance, interaction and specialized output — demand-led backlog"
+    }
+  }
+}

@@ -2,10 +2,14 @@
 // Copyright (c) InsightDock contributors
 
 #include "insightdock/detail/svg_target.h"
+#include "insightdock/detail/math_constants.h"
 
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <iomanip>
+#include <locale>
+#include <sstream>
 
 namespace insightdock::charts::detail {
 
@@ -15,9 +19,10 @@ std::string num(float v) {
   if (!std::isfinite(v))
     v = 0.0f;
   v = std::max(-1.0e7f, std::min(1.0e7f, v));
-  char buf[32];
-  std::snprintf(buf, sizeof(buf), "%.2f", static_cast<double>(v));
-  std::string s(buf);
+  std::ostringstream stream;
+  stream.imbue(std::locale::classic());
+  stream << std::fixed << std::setprecision(2) << v;
+  std::string s = stream.str();
   // Trim trailing zeros ("12.50" -> "12.5", "3.00" -> "3").
   if (s.find('.') != std::string::npos) {
     while (s.back() == '0')
@@ -142,6 +147,24 @@ void SvgTarget::fill_polygon(Point const *points, std::size_t count, Color const
 void SvgTarget::fill_circle(float cx, float cy, float radius, Color const &color) {
   body_ += "<circle cx=\"" + num(cx) + "\" cy=\"" + num(cy) + "\" r=\"" + num(radius) + "\"" +
            fill_attrs(color) + "/>\n";
+}
+
+void SvgTarget::fill_sector(float cx, float cy, float radius, double start, double end,
+                            Color const &color) {
+  if (!std::isfinite(cx) || !std::isfinite(cy) || !std::isfinite(radius) || radius <= 0.0f ||
+      !std::isfinite(start) || !std::isfinite(end) || end <= start)
+    return;
+  if (end - start >= 2.0 * M_PI - 1e-9) {
+    fill_circle(cx, cy, radius, color);
+    return;
+  }
+  float sx = cx + radius * static_cast<float>(std::cos(start));
+  float sy = cy + radius * static_cast<float>(std::sin(start));
+  float ex = cx + radius * static_cast<float>(std::cos(end));
+  float ey = cy + radius * static_cast<float>(std::sin(end));
+  body_ += "<path d=\"M " + num(cx) + "," + num(cy) + " L " + num(sx) + "," + num(sy) + " A " +
+           num(radius) + "," + num(radius) + " 0 " + (end - start > M_PI ? "1" : "0") + " 1 " +
+           num(ex) + "," + num(ey) + " Z\"" + fill_attrs(color) + "/>\n";
 }
 
 void SvgTarget::draw_line(float x0, float y0, float x1, float y1, float width, Color const &color) {

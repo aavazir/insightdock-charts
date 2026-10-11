@@ -89,7 +89,10 @@ public:
                     uint8_t b, uint8_t a = 255);
 
   /**
-   * @brief Antialiased line segment.
+   * @brief Filled antialiased line segment with round caps.
+   *
+   * Pixel centers are at half-integer coordinates; align a horizontal/vertical 1px stroke
+   * with these centers for a fully opaque interior.
    * @param width Stroke width in pixels (≥ 1).
    */
   void draw_line(float x0, float y0, float x1, float y1, float width, Color const &color);

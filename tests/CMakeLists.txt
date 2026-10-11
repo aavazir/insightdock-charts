@@ -41,4 +41,23 @@ add_test(NAME find_package_consumer
     "-DCXX_COMPILER=${CMAKE_CXX_COMPILER}"
     "-DCXX_FLAGS=${CMAKE_CXX_FLAGS}"
     "-DEXE_LINKER_FLAGS=${CMAKE_EXE_LINKER_FLAGS}"
+    "-DDEPENDENCY_PREFIX_PATH=${CMAKE_PREFIX_PATH}"
     -P ${CMAKE_CURRENT_SOURCE_DIR}/consumer/run.cmake)
+
+# Run the same regressions in different process timezones without changing global state in tests.
+add_executable(insightdock_reliability_tests reliability_tests.cc)
+target_link_libraries(insightdock_reliability_tests PRIVATE InsightDock::Charts)
+foreach(zone UTC Asia/Karachi America/New_York)
+  string(REPLACE "/" "_" zone_name "${zone}")
+  add_test(NAME reliability_${zone_name}
+    COMMAND ${CMAKE_COMMAND} -E env "TZ=${zone}" $<TARGET_FILE:insightdock_reliability_tests>
+      "${CMAKE_BINARY_DIR}/reliability-${zone_name}")
+endforeach()
+
+add_executable(insightdock_export_contract_tests export_contract_tests.cc)
+target_link_libraries(insightdock_export_contract_tests PRIVATE InsightDock::Charts Threads::Threads)
+if(INSIGHTDOCK_WITH_PODOFO)
+  target_include_directories(insightdock_export_contract_tests PRIVATE ${_insightdock_podofo_include_dirs})
+endif()
+add_test(NAME export_contracts COMMAND insightdock_export_contract_tests
+  "${CMAKE_BINARY_DIR}/export-contract-output")
