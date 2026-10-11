@@ -87,9 +87,9 @@ jobs:
   pdf:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Fetch pinned PoDoFo 1.2 source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: podofo/podofo
           ref: 00f86c8ad7b78430b25ad2c81edb704ae8daa6ea
